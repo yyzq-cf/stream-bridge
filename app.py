@@ -23,6 +23,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ─── 权限检查装饰器 ───
+def admin_required(f):
+    """需要管理员权限"""
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_admin:
+            if request.is_json or request.headers.get('Content-Type') == 'application/json':
+                return jsonify({'ok': False, 'message': '需要管理员权限'}), 403
+            flash('需要管理员权限', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 # ─── 登录限流(防暴力破解) ───
 from collections import defaultdict
 import time as _time
@@ -503,6 +518,7 @@ def video_push_stats(tid):
 
 @app.route('/settings')
 @login_required
+@admin_required
 def settings():
     kuaishou_cookie = Setting.query.filter_by(key='kuaishou_cookie').first()
     kuaishou_cookie = kuaishou_cookie.value if kuaishou_cookie else ''
@@ -513,6 +529,7 @@ def settings():
 
 @app.route('/settings/cookie', methods=['POST'])
 @login_required
+@admin_required
 def update_cookie():
     platform = request.form.get('platform', '').strip()
     cookie = request.form.get('cookie', '').strip()
@@ -529,6 +546,7 @@ def update_cookie():
 
 @app.route('/settings/proxy', methods=['POST'])
 @login_required
+@admin_required
 def update_proxy():
     proxy = request.form.get('proxy', '').strip()
     s = Setting.query.filter_by(key='proxy').first()
@@ -543,6 +561,7 @@ def update_proxy():
 
 @app.route('/targets')
 @login_required
+@admin_required
 def targets():
     targets = PushTarget.query.order_by(PushTarget.created_at.desc()).all()
     return render_template('targets.html', targets=targets, yt_rtmp=Config.YOUTUBE_RTMP_BASE)
@@ -550,6 +569,7 @@ def targets():
 
 @app.route('/targets/add', methods=['POST'])
 @login_required
+@admin_required
 def add_target():
     name = request.form.get('name', '').strip()
     rtmp_url = request.form.get('rtmp_url', '').strip()
@@ -573,6 +593,7 @@ def add_target():
 
 @app.route('/targets/<int:tid>/delete', methods=['POST'])
 @login_required
+@admin_required
 def delete_target(tid):
     target = PushTarget.query.get_or_404(tid)
     # 检查是否有关联博主
@@ -588,6 +609,7 @@ def delete_target(tid):
 
 @app.route('/targets/<int:tid>/update', methods=['POST'])
 @login_required
+@admin_required
 def update_target(tid):
     target = PushTarget.query.get_or_404(tid)
     target.name = request.form.get('name', target.name).strip()
@@ -636,6 +658,7 @@ def api_recent_logs():
 
 @app.route('/users')
 @login_required
+@admin_required
 def users():
     if not current_user.is_admin:
         flash('需要管理员权限', 'error')

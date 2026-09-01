@@ -16,10 +16,14 @@
         <div class="nav-links">
             <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">仪表盘</a>
             <a href="{{ url_for('streamers') }}" class="{% if request.endpoint == 'streamers' %}active{% endif %}">博主管理</a>
+            {% if current_user.is_admin %}
             <a href="{{ url_for('targets') }}" class="{% if request.endpoint == 'targets' %}active{% endif %}">推流目标</a>
+            {% endif %}
             <a href="{{ url_for('logs') }}" class="{% if request.endpoint == 'logs' %}active{% endif %}">日志</a>
             <a href="{{ url_for('video_push') }}" class="{% if request.endpoint == 'video_push' %}active{% endif %}">视频推流</a>
+            {% if current_user.is_admin %}
             <a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">设置</a>
+            {% endif %}
             {% if current_user.is_admin %}
             <a href="{{ url_for('users') }}" class="{% if request.endpoint == 'users' %}active{% endif %}">用户</a>
             {% endif %}
