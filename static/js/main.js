@@ -366,3 +366,37 @@ async function saveProxy() {
         showToast('❌ ' + (r.message || '保存失败'), 'error');
     }
 }
+
+// ─── 用户修改自己的密码 ───
+function changePass() {
+    document.getElementById('change-pass-modal').style.display = 'flex';
+    document.getElementById('change-old-pass').focus();
+}
+
+function closeChangePassModal() {
+    document.getElementById('change-pass-modal').style.display = 'none';
+    document.getElementById('change-old-pass').value = '';
+    document.getElementById('change-new-pass').value = '';
+    document.getElementById('change-confirm-pass').value = '';
+}
+
+async function confirmChangePass() {
+    const oldPass = document.getElementById('change-old-pass').value.trim();
+    const newPass = document.getElementById('change-new-pass').value.trim();
+    const confirmPass = document.getElementById('change-confirm-pass').value.trim();
+    if (!oldPass || !newPass || !confirmPass) {
+        showToast('请填写所有字段', 'error');
+        return;
+    }
+    const r = await api('/users/change-password', 'POST', {
+        old_password: oldPass,
+        new_password: newPass,
+        confirm_password: confirmPass
+    });
+    if (r.ok) {
+        showToast('✅ ' + r.message, 'success');
+        closeChangePassModal();
+    } else {
+        showToast('❌ ' + (r.message || '修改失败'), 'error');
+    }
+}
