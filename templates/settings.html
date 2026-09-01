@@ -27,4 +27,25 @@
         </form>
     </div>
 </div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>代理配置</h2>
+    </div>
+    <div class="panel-body">
+        <p style="margin-bottom:12px;color:var(--text-dim);font-size:13px;">
+            如果快手/抖音对服务器IP限流，可以配置代理绕过限制。<br>
+            支持HTTP和SOCKS5代理，留空则不使用代理。
+        </p>
+        <form id="proxy-form" style="margin-top:16px;" onsubmit="event.preventDefault(); saveProxy();">
+            <div class="form-group">
+                <label>代理地址</label>
+                <input type="text" name="proxy" id="proxy-input" class="form-control"
+                    placeholder="例如: http://127.0.0.1:7890 或 socks5://127.0.0.1:1080"
+                    value="{{ proxy }}" style="font-family:monospace;font-size:13px;">
+            </div>
+            <button type="submit" class="btn btn-primary">保存代理</button>
+        </form>
+    </div>
+</div>
 {% endblock %}

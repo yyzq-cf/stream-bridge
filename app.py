@@ -263,7 +263,9 @@ def stop_manual_push(sid):
 def settings():
     kuaishou_cookie = Setting.query.filter_by(key='kuaishou_cookie').first()
     kuaishou_cookie = kuaishou_cookie.value if kuaishou_cookie else ''
-    return render_template('settings.html', kuaishou_cookie=kuaishou_cookie)
+    proxy = Setting.query.filter_by(key='proxy').first()
+    proxy = proxy.value if proxy else ''
+    return render_template('settings.html', kuaishou_cookie=kuaishou_cookie, proxy=proxy)
 
 
 @app.route('/settings/cookie', methods=['POST'])
@@ -280,6 +282,20 @@ def update_cookie():
         db.session.add(s)
     db.session.commit()
     return jsonify({'ok': True, 'message': f'{platform} Cookie已保存'})
+
+
+@app.route('/settings/proxy', methods=['POST'])
+@login_required
+def update_proxy():
+    proxy = request.form.get('proxy', '').strip()
+    s = Setting.query.filter_by(key='proxy').first()
+    if s:
+        s.value = proxy
+    else:
+        s = Setting(key='proxy', value=proxy)
+        db.session.add(s)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': '代理已保存'})
 
 
 @app.route('/targets')

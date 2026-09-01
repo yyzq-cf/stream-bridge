@@ -13,26 +13,45 @@ DOUYIN_HEADERS = {
 }
 
 
+def _get_proxy():
+    """从数据库读取代理配置"""
+    try:
+        from models import Setting
+        from app import app
+        with app.app_context():
+            s = Setting.query.filter_by(key='proxy').first()
+            return s.value.strip() if s and s.value and s.value.strip() else None
+    except:
+        return None
+
+
 def check_douyin_live(url):
     """
     检测抖音直播状态并获取流地址
     返回 (is_live, stream_url, error)
     """
-    import urllib.request
+    import subprocess
 
     # 清理URL: 去掉多余query参数, 只保留 https://live.douyin.com/{room_id}
     url = _clean_douyin_url(url)
 
-    # 重试3次(tiktok有503反爬)
+    proxy = _get_proxy()
+    
+    # 重试3次(抖音有503反爬)
     for attempt in range(3):
         try:
-            req = urllib.request.Request(url, headers=DOUYIN_HEADERS)
-            resp = urllib.request.urlopen(req, timeout=15)
-            html = resp.read().decode('utf-8', errors='replace')
+            cmd = ['curl', '-s', '--compressed', '-L', url,
+                   '-H', f'User-Agent: {DOUYIN_HEADERS["User-Agent"]}']
+            if proxy:
+                cmd += ['--proxy', proxy]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+            html = result.stdout
+            if len(html) < 1000:
+                raise Exception(f'页面内容过少({len(html)}字节)')
             break
         except Exception as e:
             if '503' in str(e) and attempt < 2:
-                logger.warning(f"抖音503, 第{attempt+1}次重试...")
+                logger.warning(f"抖音重试, 第{attempt+1}次...")
                 time.sleep(2)
                 continue
             return False, None, f'抖音检测异常: {e}'

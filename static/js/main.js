@@ -355,3 +355,14 @@ async function saveCookie(platform) {
         showToast('❌ ' + (r.message || '保存失败'), 'error');
     }
 }
+
+// ─── 保存代理 ───
+async function saveProxy() {
+    const proxy = document.getElementById('proxy-input').value.trim();
+    const r = await api('/settings/proxy', 'POST', { proxy: proxy });
+    if (r.ok) {
+        showToast('✅ ' + r.message, 'success');
+    } else {
+        showToast('❌ ' + (r.message || '保存失败'), 'error');
+    }
+}

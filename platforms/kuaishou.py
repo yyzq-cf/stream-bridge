@@ -27,6 +27,18 @@ def _get_kuaishou_cookie():
         return 'clientid=3'
 
 
+def _get_proxy():
+    """从数据库读取代理配置"""
+    try:
+        from models import Setting
+        from app import app
+        with app.app_context():
+            s = Setting.query.filter_by(key='proxy').first()
+            return s.value.strip() if s and s.value and s.value.strip() else None
+    except:
+        return None
+
+
 def check_kuaishou_live(url):
     """
     检测快手直播状态并获取流地址
@@ -39,6 +51,11 @@ def check_kuaishou_live(url):
 
         # 用curl获取页面
         cmd = ['curl', '-s', '--compressed', '-L', url] + headers
+        
+        # 加代理
+        proxy = _get_proxy()
+        if proxy:
+            cmd += ['--proxy', proxy]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
 
         if result.returncode != 0:
@@ -50,6 +67,8 @@ def check_kuaishou_live(url):
             try:
                 import brotli
                 cmd2 = ['curl', '-s', '-L', url] + headers
+                if proxy:
+                    cmd2 += ['--proxy', proxy]
                 result2 = subprocess.run(cmd2, capture_output=True, timeout=15)
                 html = brotli.decompress(result2.stdout).decode('utf-8', errors='replace')
                 logger.info(f"快手页面(brotli解压) len={len(html)}")
