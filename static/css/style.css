@@ -300,3 +300,28 @@ input:checked + .slider:before { transform: translateX(18px); }
     color: var(--primary);
     background: var(--surface2);
 }
+
+/* Version badge */
+.nav-version {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+/* GitHub icon */
+.nav-github {
+    display: flex;
+    align-items: center;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+.nav-github:hover {
+    color: var(--text);
+    background: var(--surface2);
+}
