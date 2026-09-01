@@ -85,7 +85,12 @@
             box-shadow: 0 6px 20px rgba(108,92,231,0.3);
         }
         .login-form button:active { transform: translateY(0); }
-        .login-footer {
+        .login-locked {
+    text-align: center;
+    padding: 24px 0;
+    color: #e74c3c;
+}
+.login-footer {
             text-align: center;
             margin-top: 24px;
             color: #a0aec0;
@@ -103,6 +108,13 @@
             <h1>StreamBridge</h1>
             <p>直播转推YouTube管理平台</p>
         </div>
+        {% if locked %}
+        <div class="login-locked">
+            <div style="font-size:32px;margin-bottom:8px;">🔒</div>
+            <p style="font-size:15px;font-weight:600;margin-bottom:4px;">账户已锁定</p>
+            <p style="font-size:13px;color:#a0aec0;">请等待 {{ lock_time }} 秒后再试</p>
+        </div>
+        {% else %}
         <form method="POST" class="login-form">
             <div class="form-group">
                 <label>用户名</label>
@@ -114,6 +126,7 @@
             </div>
             <button type="submit">登 录</button>
         </form>
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}

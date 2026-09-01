@@ -23,6 +23,49 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ─── 登录限流(防暴力破解) ───
+from collections import defaultdict
+import time as _time
+
+login_attempts = defaultdict(list)  # IP -> [timestamp, ...]
+MAX_ATTEMPTS = 5        # 最多尝试次数
+LOCKOUT_TIME = 300      # 锁定时间(秒) = 5分钟
+ATTEMPT_WINDOW = 600    # 尝试窗口(秒) = 10分钟
+
+
+def check_login_rate(ip):
+    """检查IP是否被锁定, 返回 (allowed, remaining_lock_time)"""
+    now = _time.time()
+    # 清理过期记录
+    login_attempts[ip] = [t for t in login_attempts[ip] if now - t < ATTEMPT_WINDOW]
+    
+    if len(login_attempts[ip]) >= MAX_ATTEMPTS:
+        first_attempt = login_attempts[ip][0]
+        lock_remaining = LOCKOUT_TIME - (now - first_attempt)
+        if lock_remaining > 0:
+            return False, int(lock_remaining)
+        else:
+            # 锁定过期, 清理
+            login_attempts[ip] = []
+    return True, 0
+
+
+def record_failed_login(ip):
+    """记录失败登录"""
+    now = _time.time()
+    login_attempts[ip].append(now)
+
+
+def clear_login_attempts(ip):
+    """登录成功后清理"""
+    if ip in login_attempts:
+        del login_attempts[ip]
+
+
+def get_client_ip():
+    """获取客户端IP"""
+    return request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr or '').split(',')[0].strip()
+
 app = Flask(__name__)
 app.config.from_object(Config)
 db.init_app(app)
@@ -55,15 +98,38 @@ def init_db():
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
+    
+    client_ip = get_client_ip()
+    
     if request.method == 'POST':
+        # 检查是否被锁定
+        allowed, lock_time = check_login_rate(client_ip)
+        if not allowed:
+            flash(f'登录尝试过多, 请 {lock_time} 秒后再试', 'error')
+            return render_template('login.html', locked=True, lock_time=lock_time)
+        
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         user = User.query.filter_by(username=username).first()
+        
         if user and user.check_password(password):
+            clear_login_attempts(client_ip)
             login_user(user)
+            logger.info(f"登录成功: {username} IP={client_ip}")
             return redirect(url_for('dashboard'))
-        flash('用户名或密码错误', 'error')
-    return render_template('login.html')
+        else:
+            record_failed_login(client_ip)
+            remaining = MAX_ATTEMPTS - len(login_attempts[client_ip])
+            if remaining > 0:
+                flash(f'用户名或密码错误, 剩余尝试次数: {remaining}', 'error')
+            else:
+                flash(f'登录失败次数过多, 账户已锁定 {LOCKOUT_TIME} 秒', 'error')
+            logger.warning(f"登录失败: username={username} IP={client_ip} attempts={len(login_attempts[client_ip])}")
+    
+    # 检查是否已被锁定(GET请求时)
+    allowed, lock_time = check_login_rate(client_ip)
+    locked = not allowed
+    return render_template('login.html', locked=locked, lock_time=lock_time)
 
 
 @app.route('/logout')
