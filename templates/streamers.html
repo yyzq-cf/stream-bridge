@@ -76,6 +76,7 @@
                         <button class="btn btn-sm btn-info" onclick="checkNow({{ s.id }})">检测</button>
                         <button class="btn btn-sm btn-success" onclick="startPush({{ s.id }})" {{ '' if s.is_live else 'disabled title="未在直播"' }}>推流</button>
                         <button class="btn btn-sm btn-warning" onclick="stopPush({{ s.id }})">停止</button>
+                        <button class="btn btn-sm" onclick="editStreamer({{ s.id }}, '{{ s.name }}', '{{ s.platform }}', '{{ s.room_id }}', {{ s.push_target_id or 'null' }})">编辑</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteStreamer({{ s.id }}, '{{ s.name }}')">删除</button>
                     </td>
                 </tr>
@@ -85,6 +86,44 @@
         {% else %}
         <div class="empty">还没有添加博主，使用上方表单添加</div>
         {% endif %}
+    </div>
+</div>
+
+<!-- 编辑弹窗 -->
+<div id="edit-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>编辑博主</h3>
+        <form method="POST" id="edit-form" style="margin-top:16px;">
+            <div class="form-group">
+                <label>平台</label>
+                <select name="platform" id="edit-platform" class="form-control" required>
+                    {% for key, label in config.SUPPORTED_PLATFORMS.items() %}
+                    <option value="{{ key }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>博主名称</label>
+                <input type="text" name="name" id="edit-name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>房间号或完整URL</label>
+                <input type="text" name="room_id" id="edit-room-id" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>推流目标</label>
+                <select name="push_target_id" id="edit-target" class="form-control">
+                    <option value="">不绑定</option>
+                    {% for t in targets %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeEditModal()">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

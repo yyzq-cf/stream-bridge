@@ -169,6 +169,23 @@ def update_streamer_target(sid):
     return jsonify({'ok': True, 'message': '推流目标已更新'})
 
 
+@app.route('/streamers/<int:sid>/edit', methods=['POST'])
+@login_required
+def edit_streamer(sid):
+    """编辑博主信息"""
+    streamer = Streamer.query.get_or_404(sid)
+    streamer.platform = request.form.get('platform', streamer.platform).strip()
+    streamer.name = request.form.get('name', streamer.name).strip()
+    streamer.room_id = request.form.get('room_id', streamer.room_id).strip()
+    streamer.url = streamer.room_id if streamer.room_id.startswith('http') else None
+    target_id = request.form.get('push_target_id', '').strip()
+    streamer.push_target_id = int(target_id) if target_id else None
+    db.session.commit()
+    _log(streamer.id, 'info', 'edit', f'编辑博主: {streamer.name}')
+    flash(f'博主 {streamer.name} 已更新', 'success')
+    return redirect(url_for('streamers'))
+
+
 @app.route('/streamers/<int:sid>/check', methods=['POST'])
 @login_required
 def check_now(sid):

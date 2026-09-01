@@ -325,3 +325,18 @@ function editTarget(id, name, rtmpUrl) {
 function closeEditModal() {
     document.getElementById('edit-modal').style.display = 'none';
 }
+
+// ─── 编辑博主 ───
+function editStreamer(id, name, platform, roomId, targetId) {
+    document.getElementById('edit-name').value = name;
+    document.getElementById('edit-platform').value = platform;
+    document.getElementById('edit-room-id').value = roomId;
+    const targetSelect = document.getElementById('edit-target');
+    targetSelect.value = targetId || '';
+    document.getElementById('edit-form').action = `/streamers/${id}/edit`;
+    document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+}
