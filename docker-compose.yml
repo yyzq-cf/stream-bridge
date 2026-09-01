@@ -1,14 +1,14 @@
 services:
   streambridge:
-    image: ywsj/stream-bridge:latest
-    container_name: streambridge
-    restart: always
+    image: ywsj/stream-bridge:latest    # Docker镜像地址
+    container_name: streambridge        # 容器名称
+    restart: always                     # 容器异常时自动重启
     ports:
-      - "5300:5300"
+      - "5300:5300"                     # 端口映射(主机:容器)
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data                # 数据持久化目录(数据库+配置)
     environment:
-      - ADMIN_USER=admin
-      - ADMIN_PASS=admin123
-      - SECRET_KEY=change-this-to-a-random-string
-      - MONITOR_INTERVAL=60
+      - ADMIN_USER=admin                # 管理员用户名
+      - ADMIN_PASS=admin123             # 管理员密码(首次启动后建议修改)
+      - SECRET_KEY=change-this-to-random-string  # Session加密密钥(生产环境务必修改)
+      - MONITOR_INTERVAL=60             # 监控轮询间隔(秒)，检测博主是否开播
