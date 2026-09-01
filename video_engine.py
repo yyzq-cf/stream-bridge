@@ -29,33 +29,68 @@ def start_video_push(task_id):
         if not target:
             return False, '推流目标不存在'
 
-        # 源地址: 在线URL或本地文件
-        source = task.source_url if task.source_type == 'url' and task.source_url else task.file_path
+        # 源地址: 在线URL或本地文件或目录
+        if task.source_type == 'directory' and task.file_path:
+            # 目录模式: 用concat协议拼接所有视频文件循环播放
+            import json
+            try:
+                files = json.loads(task.file_path)
+            except:
+                files = []
+            if not files:
+                return False, '目录中没有视频文件'
 
-        # 构建FFmpeg命令
-        base_cmd = [
-            Config.FFMPEG_PATH,
-            '-hide_banner',
-            '-loglevel', 'warning',
-        ]
+            # 用FFmpeg concat demuxer
+            import tempfile
+            concat_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, dir='/tmp')
+            for f_path in files:
+                # 转义单引号
+                safe_path = f_path.replace("'", r"\'")
+                concat_file.write(f"file '{safe_path}'\n")
+            concat_file.close()
 
-        # 循环推流(仅本地文件支持循环)
-        if task.loop:
-            base_cmd += ['-stream_loop', '-1']
+            base_cmd = [
+                Config.FFMPEG_PATH, '-hide_banner', '-loglevel', 'warning',
+            ]
+            if task.loop:
+                base_cmd += ['-stream_loop', '-1']
+            base_cmd += [
+                '-re',
+                '-f', 'concat', '-safe', '0',
+                '-i', concat_file.name,
+                '-c:v', Config.DEFAULT_VIDEO_CODEC,
+                '-c:a', Config.DEFAULT_AUDIO_CODEC,
+                '-b:a', Config.DEFAULT_AUDIO_BITRATE,
+                '-ar', '44100',
+                '-f', 'flv', '-flvflags', 'no_duration_filesize',
+                f'{target.rtmp_url}/{target.stream_key}'
+            ]
+            cmd = base_cmd
 
-        base_cmd += [
-            '-re',  # 按原始帧率读取
-            '-i', source,
-            '-c:v', Config.DEFAULT_VIDEO_CODEC,
-            '-c:a', Config.DEFAULT_AUDIO_CODEC,
-            '-b:a', Config.DEFAULT_AUDIO_BITRATE,
-            '-ar', '44100',
-            '-f', 'flv',
-            '-flvflags', 'no_duration_filesize',
-            f'{target.rtmp_url}/{target.stream_key}'
-        ]
+        else:
+            source = task.source_url if task.source_type == 'url' and task.source_url else task.file_path
 
-        cmd = base_cmd
+            base_cmd = [
+                Config.FFMPEG_PATH,
+                '-hide_banner',
+                '-loglevel', 'warning',
+            ]
+
+            if task.loop:
+                base_cmd += ['-stream_loop', '-1']
+
+            base_cmd += [
+                '-re',
+                '-i', source,
+                '-c:v', Config.DEFAULT_VIDEO_CODEC,
+                '-c:a', Config.DEFAULT_AUDIO_CODEC,
+                '-b:a', Config.DEFAULT_AUDIO_BITRATE,
+                '-ar', '44100',
+                '-f', 'flv', '-flvflags', 'no_duration_filesize',
+                f'{target.rtmp_url}/{target.stream_key}'
+            ]
+
+            cmd = base_cmd
 
         try:
             proc = subprocess.Popen(

@@ -105,6 +105,7 @@ function closeEditVP() {
                 <div style="display:flex;gap:16px;margin-bottom:8px;">
                     <label class="checkbox-label"><input type="radio" name="source_type" value="file" checked onchange="toggleSource()"> 上传本地文件</label>
                     <label class="checkbox-label"><input type="radio" name="source_type" value="url" onchange="toggleSource()"> 在线视频直链</label>
+                    <label class="checkbox-label"><input type="radio" name="source_type" value="directory" onchange="toggleSource()"> 目录循环</label>
                 </div>
             </div>
 
@@ -120,6 +121,18 @@ function closeEditVP() {
                 <input type="text" name="source_url" id="source-url" class="form-control"
                     placeholder="https://example.com/video.mp4" style="font-family:monospace;font-size:13px;">
                 <p style="margin-top:6px;color:var(--text-dim);font-size:12px;">支持mp4/mkv/flv等直链，必须是可直接下载的视频文件URL</p>
+            </div>
+
+            <div class="form-group" id="dir-section" style="display:none;">
+                <label>视频目录路径</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" name="directory" id="dir-input" class="form-control"
+                        placeholder="/app/data/videos 或 /path/to/dir" style="font-family:monospace;font-size:13px;flex:1;">
+                    <button type="button" class="btn btn-sm" onclick="scanDir()">扫描</button>
+                </div>
+                <div id="dir-result" style="margin-top:8px;font-size:13px;"></div>
+                <input type="hidden" name="file_path" id="dir-file-list">
+                <p style="margin-top:6px;color:var(--text-dim);font-size:12px;">扫描目录下所有视频文件(mp4/mkv/flv/avi/mov/ts/webm)，按文件名排序循环播放</p>
             </div>
 
             <div class="form-group">
@@ -163,11 +176,13 @@ function closeEditVP() {
                     <td style="font-size:12px;word-break:break-all;max-width:200px;">
                         {% if t.source_type == 'url' %}
                             {{ t.source_url[:60] }}{% if t.source_url|length > 60 %}...{% endif %}
+                        {% elif t.source_type == 'directory' %}
+                            📁 {{ t.file_path[:60] }}
                         {% else %}
                             {{ t.file_path|replace('/app/data/uploads/', '') }}
                         {% endif %}
                     </td>
-                    <td><span class="badge badge-{{ 'info' if t.source_type == 'url' else 'primary' }}">{{ '在线链接' if t.source_type == 'url' else '本地文件' }}</span></td>
+                    <td><span class="badge badge-{{ 'info' if t.source_type == 'url' else ('warning' if t.source_type == 'directory' else 'primary') }}">{{ {'url':'在线链接','directory':'目录循环','file':'本地文件'}.get(t.source_type, '本地文件') }}</span></td>
                     <td>{{ t.push_target.name if t.push_target else '-' }}</td>
                     <td>{{ '✅' if t.loop else '-' }}</td>
                     <td>
@@ -200,23 +215,49 @@ function closeEditVP() {
 <script>
 // 切换来源类型
 function toggleSource() {
+    const isFile = document.querySelector('input[name="source_type"][value="file"]').checked;
     const isUrl = document.querySelector('input[name="source_type"][value="url"]').checked;
-    document.getElementById('file-section').style.display = isUrl ? 'none' : '';
+    const isDir = document.querySelector('input[name="source_type"][value="directory"]').checked;
+    document.getElementById('file-section').style.display = isFile ? '' : 'none';
     document.getElementById('url-section').style.display = isUrl ? '' : 'none';
+    document.getElementById('dir-section').style.display = isDir ? '' : 'none';
     checkSubmit();
 }
 
 function checkSubmit() {
     const isUrl = document.querySelector('input[name="source_type"][value="url"]').checked;
+    const isDir = document.querySelector('input[name="source_type"][value="directory"]').checked;
     const submitBtn = document.getElementById('submit-btn');
     if (isUrl) {
         submitBtn.disabled = !document.getElementById('source-url').value.trim();
+    } else if (isDir) {
+        submitBtn.disabled = !document.getElementById('dir-input').value.trim();
     } else {
         submitBtn.disabled = !document.getElementById('file-path').value;
     }
 }
 
 document.getElementById('source-url').addEventListener('input', checkSubmit);
+document.getElementById('dir-input').addEventListener('input', checkSubmit);
+
+// 扫描目录
+async function scanDir() {
+    const dir = document.getElementById('dir-input').value.trim();
+    if (!dir) { showToast('请输入目录路径', 'error'); return; }
+    const resultEl = document.getElementById('dir-result');
+    resultEl.textContent = '⏳ 扫描中...';
+    resultEl.style.color = 'var(--text-dim)';
+    const r = await api('/video-push/scan-dir', 'POST', { directory: dir });
+    if (r.ok) {
+        resultEl.innerHTML = '<span style="color:var(--success);">✅ 找到 ' + r.count + ' 个视频文件</span>' +
+            (r.files.length > 0 ? '<div style="margin-top:6px;color:var(--text-dim);max-height:120px;overflow-y:auto;">' +
+                r.files.map(f => '<div>📹 ' + f + '</div>').join('') + '</div>' : '');
+        checkSubmit();
+    } else {
+        resultEl.textContent = '❌ ' + (r.message || '扫描失败');
+        resultEl.style.color = 'var(--danger)';
+    }
+}
 
 // 文件上传
 document.getElementById('file-input').addEventListener('change', function() {

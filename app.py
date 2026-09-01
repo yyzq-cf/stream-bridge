@@ -407,6 +407,25 @@ def video_push_add():
     else:
         source_type = 'url'
 
+    # 目录模式
+    directory = request.form.get('directory', '').strip()
+    if source_type == 'directory':
+        if not directory:
+            return jsonify({'ok': False, 'message': '请填写目录路径'})
+        import os, json
+        if not os.path.isdir(directory):
+            return jsonify({'ok': False, 'message': '目录不存在'})
+        # 扫描目录下所有视频文件
+        video_exts = ('.mp4', '.mkv', '.flv', '.avi', '.mov', '.ts', '.webm', '.m4v')
+        files = []
+        for f_name in sorted(os.listdir(directory)):
+            if f_name.lower().endswith(video_exts):
+                files.append(os.path.join(directory, f_name))
+        if not files:
+            return jsonify({'ok': False, 'message': '目录中没有视频文件'})
+        file_path = json.dumps(files)
+        source_url = None
+
     task = VideoPush(
         name=name,
         file_path=file_path if file_path else None,
@@ -430,8 +449,16 @@ def video_push_edit(tid):
         return jsonify({'ok': False, 'message': '请先停止推流再编辑'})
     task.name = request.form.get('name', task.name).strip()
     task.source_url = request.form.get('source_url', '').strip() or None
-    task.file_path = request.form.get('file_path', '').strip() or None
     task.source_type = request.form.get('source_type', task.source_type).strip()
+    if task.source_type == 'directory':
+        directory = request.form.get('directory', '').strip()
+        if directory:
+            import os, json
+            video_exts = ('.mp4', '.mkv', '.flv', '.avi', '.mov', '.ts', '.webm', '.m4v')
+            files = [os.path.join(directory, f) for f in sorted(os.listdir(directory)) if f.lower().endswith(video_exts)]
+            task.file_path = json.dumps(files) if files else task.file_path
+    else:
+        task.file_path = request.form.get('file_path', '').strip() or None
     target_id = request.form.get('push_target_id', '').strip()
     task.push_target_id = int(target_id) if target_id else task.push_target_id
     task.loop = request.form.get('loop') == 'on'
