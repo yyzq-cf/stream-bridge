@@ -42,11 +42,23 @@ def start_ffmpeg_push(active_stream_id):
             stop_ffmpeg_push(active_stream_id, force=True)
 
         # FFmpeg命令: 拉流转推, 不转码视频, 音频转AAC(YouTube要求AAC)
+        # 根据源流URL判断是否需要加请求头
+        headers = []
+        if 'douyincdn' in source_url or 'douyin' in source_url:
+            headers = [
+                '-headers', 'Referer: https://live.douyin.com/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n',
+            ]
+        elif 'kuaishou' in source_url or 'ksapisrv' in source_url:
+            headers = [
+                '-headers', 'Referer: https://live.kuaishou.com/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n',
+            ]
+
         cmd = [
             Config.FFMPEG_PATH,
             '-hide_banner',
             '-loglevel', 'warning',
             '-rw_timeout', '10000000',  # 10秒超时
+        ] + headers + [
             '-i', source_url,
             '-c:v', Config.DEFAULT_VIDEO_CODEC,        # 视频直接copy
             '-c:a', Config.DEFAULT_AUDIO_CODEC,        # 音频转AAC

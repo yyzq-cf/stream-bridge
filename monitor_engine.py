@@ -18,82 +18,66 @@ monitor_running = False
 monitor_thread = None
 
 
-def get_stream_url(streamer):
+def check_streamer_live(streamer):
     """
-    用yt-dlp获取直播流地址
-    返回 (stream_url, error_message)
+    检测博主是否在直播
+    根据平台选择检测方式
+    返回 (is_live, stream_url, error)
     """
-    room_url = streamer.url or streamer.room_id
-
-    # 根据平台标准化URL
     url = _normalize_url(streamer.platform, streamer.room_id)
 
+    # 抖音: 用专用检测器(从页面提取FLV流)
+    if streamer.platform == 'douyin':
+        from platforms.douyin import check_douyin_live
+        return check_douyin_live(url)
+
+    # 其他平台: 用yt-dlp
+    return _check_with_ytdlp(url)
+
+
+def _check_with_ytdlp(url):
+    """用yt-dlp检测直播流"""
     try:
         cmd = [
             Config.YTDLP_PATH,
             '--no-warnings',
             '--no-check-certificates',
-            '-J',  # 输出JSON
+            '-J',
             '--no-playlist',
             url
         ]
         result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=30
+            cmd, capture_output=True, text=True, timeout=30
         )
 
         if result.returncode != 0:
-            return None, f'yt-dlp错误: {result.stderr[:500]}'
+            return False, None, f'yt-dlp: {result.stderr[:200]}'
 
         data = json.loads(result.stdout)
 
-        # 检查是否在直播
         is_live = data.get('is_live', False)
-        if not is_live:
-            # 有些平台没有is_live字段, 检查formats
-            formats = data.get('formats', [])
-            if not formats:
-                return None, '未在直播'
-
-        # 获取最佳流地址
-        # 优先取最底层的url (通常是最好的)
         formats = data.get('formats', [])
+
+        if not is_live and not formats:
+            return False, None, None  # 未开播
+
+        # 获取流地址
+        stream_url = None
         if formats:
-            # 取最后一个格式(通常是最高质量)
-            best = formats[-1]
-            stream_url = best.get('url')
-            if not stream_url:
-                # 有些流需要manifest_url
-                stream_url = data.get('url') or data.get('manifest_url')
-        else:
+            stream_url = formats[-1].get('url')
+        if not stream_url:
             stream_url = data.get('url') or data.get('manifest_url')
 
-        if not stream_url:
-            return None, '无法获取流地址'
-
-        return stream_url, None
+        if stream_url:
+            return True, stream_url, None
+        return False, None, '无法获取流地址'
 
     except subprocess.TimeoutExpired:
-        return None, 'yt-dlp超时(30s)'
+        return False, None, 'yt-dlp超时'
     except json.JSONDecodeError:
-        return None, 'yt-dlp返回非JSON'
+        return False, None, 'yt-dlp返回非JSON'
     except Exception as e:
-        return None, f'异常: {e}'
-
-
-def check_streamer_live(streamer):
-    """
-    检测博主是否在直播
-    返回 (is_live, stream_url, error)
-    """
-    stream_url, err = get_stream_url(streamer)
-    if err:
-        return False, None, err
-    if stream_url:
-        return True, stream_url, None
-    return False, None, '未获取到流地址'
+        return False, None, f'异常: {e}'
 
 
 def _normalize_url(platform, room_id):
