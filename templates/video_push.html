@@ -1,5 +1,91 @@
 {% extends 'base.html' %}
-{% block title %}视频推流 - StreamBridge{% endblock %}
+{% block title %}视频推流 - StreamBridge<!-- 编辑弹窗 -->
+<div id="edit-vp-modal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width:500px;">
+        <h3>编辑推流任务</h3>
+        <form method="POST" id="edit-vp-form" style="margin-top:16px;">
+            <div class="form-group">
+                <label>任务名称</label>
+                <input type="text" name="name" id="edit-vp-name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>视频来源</label>
+                <select name="source_type" id="edit-vp-type" class="form-control">
+                    <option value="file">本地文件</option>
+                    <option value="url">在线链接</option>
+                </select>
+            </div>
+            <div class="form-group" id="edit-vp-url-group">
+                <label>在线视频URL</label>
+                <input type="text" name="source_url" id="edit-vp-url" class="form-control" style="font-family:monospace;font-size:12px;">
+            </div>
+            <div class="form-group" id="edit-vp-file-group" style="display:none;">
+                <label>本地文件路径</label>
+                <input type="text" name="file_path" id="edit-vp-file" class="form-control" style="font-family:monospace;font-size:12px;">
+            </div>
+            <div class="form-group">
+                <label>推流目标</label>
+                <select name="push_target_id" id="edit-vp-target" class="form-control">
+                    {% for t in targets %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label"><input type="checkbox" name="loop" id="edit-vp-loop"> 循环推流</label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeEditVP()">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editVP(id, name, sourceType, sourceUrl, filePath, targetId, loop) {
+    document.getElementById('edit-vp-name').value = name;
+    document.getElementById('edit-vp-type').value = sourceType;
+    document.getElementById('edit-vp-url').value = sourceUrl;
+    document.getElementById('edit-vp-file').value = filePath;
+    document.getElementById('edit-vp-target').value = targetId;
+    document.getElementById('edit-vp-loop').checked = loop;
+    
+    // 切换显示
+    const isUrl = sourceType === 'url';
+    document.getElementById('edit-vp-url-group').style.display = isUrl ? '' : 'none';
+    document.getElementById('edit-vp-file-group').style.display = isUrl ? 'none' : '';
+    
+    // 类型切换
+    document.getElementById('edit-vp-type').onchange = function() {
+        const isUrl = this.value === 'url';
+        document.getElementById('edit-vp-url-group').style.display = isUrl ? '' : 'none';
+        document.getElementById('edit-vp-file-group').style.display = isUrl ? 'none' : '';
+    };
+    
+    document.getElementById('edit-vp-form').action = `/video-push/${id}/edit`;
+    document.getElementById('edit-vp-form').onsubmit = async function(e) {
+        e.preventDefault();
+        const data = {};
+        new FormData(this).forEach((v, k) => data[k] = v);
+        const r = await api(`/video-push/${id}/edit`, 'POST', data);
+        if (r.ok) {
+            showToast('✅ ' + r.message, 'success');
+            closeEditVP();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('❌ ' + (r.message || '保存失败'), 'error');
+        }
+    };
+    document.getElementById('edit-vp-modal').style.display = 'flex';
+}
+
+function closeEditVP() {
+    document.getElementById('edit-vp-modal').style.display = 'none';
+}
+</script>
+
+{% endblock %}
 {% block content %}
 <h1 class="page-title">视频文件推流</h1>
 
@@ -97,6 +183,7 @@
                         <button class="btn btn-sm btn-warning" onclick="stopVP({{ t.id }})">停止</button>
                         {% else %}
                         <button class="btn btn-sm btn-success" onclick="startVP({{ t.id }})">开始推流</button>
+                        <button class="btn btn-sm" onclick="editVP({{ t.id }}, '{{ t.name }}', '{{ t.source_type }}', '{{ t.source_url|default('') }}', '{{ t.file_path|default('') }}', {{ t.push_target_id }}, {{ 'true' if t.loop else 'false' }})">编辑</button>
                         {% endif %}
                         <button class="btn btn-sm btn-danger" onclick="deleteVP({{ t.id }}, '{{ t.name }}')">删除</button>
                     </td>
@@ -221,4 +308,90 @@ if (document.querySelectorAll('[id^="vp-"][data-id]').length > 0) {
     refreshVP();
 }
 </script>
+<!-- 编辑弹窗 -->
+<div id="edit-vp-modal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width:500px;">
+        <h3>编辑推流任务</h3>
+        <form method="POST" id="edit-vp-form" style="margin-top:16px;">
+            <div class="form-group">
+                <label>任务名称</label>
+                <input type="text" name="name" id="edit-vp-name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>视频来源</label>
+                <select name="source_type" id="edit-vp-type" class="form-control">
+                    <option value="file">本地文件</option>
+                    <option value="url">在线链接</option>
+                </select>
+            </div>
+            <div class="form-group" id="edit-vp-url-group">
+                <label>在线视频URL</label>
+                <input type="text" name="source_url" id="edit-vp-url" class="form-control" style="font-family:monospace;font-size:12px;">
+            </div>
+            <div class="form-group" id="edit-vp-file-group" style="display:none;">
+                <label>本地文件路径</label>
+                <input type="text" name="file_path" id="edit-vp-file" class="form-control" style="font-family:monospace;font-size:12px;">
+            </div>
+            <div class="form-group">
+                <label>推流目标</label>
+                <select name="push_target_id" id="edit-vp-target" class="form-control">
+                    {% for t in targets %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label"><input type="checkbox" name="loop" id="edit-vp-loop"> 循环推流</label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeEditVP()">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editVP(id, name, sourceType, sourceUrl, filePath, targetId, loop) {
+    document.getElementById('edit-vp-name').value = name;
+    document.getElementById('edit-vp-type').value = sourceType;
+    document.getElementById('edit-vp-url').value = sourceUrl;
+    document.getElementById('edit-vp-file').value = filePath;
+    document.getElementById('edit-vp-target').value = targetId;
+    document.getElementById('edit-vp-loop').checked = loop;
+    
+    // 切换显示
+    const isUrl = sourceType === 'url';
+    document.getElementById('edit-vp-url-group').style.display = isUrl ? '' : 'none';
+    document.getElementById('edit-vp-file-group').style.display = isUrl ? 'none' : '';
+    
+    // 类型切换
+    document.getElementById('edit-vp-type').onchange = function() {
+        const isUrl = this.value === 'url';
+        document.getElementById('edit-vp-url-group').style.display = isUrl ? '' : 'none';
+        document.getElementById('edit-vp-file-group').style.display = isUrl ? 'none' : '';
+    };
+    
+    document.getElementById('edit-vp-form').action = `/video-push/${id}/edit`;
+    document.getElementById('edit-vp-form').onsubmit = async function(e) {
+        e.preventDefault();
+        const data = {};
+        new FormData(this).forEach((v, k) => data[k] = v);
+        const r = await api(`/video-push/${id}/edit`, 'POST', data);
+        if (r.ok) {
+            showToast('✅ ' + r.message, 'success');
+            closeEditVP();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('❌ ' + (r.message || '保存失败'), 'error');
+        }
+    };
+    document.getElementById('edit-vp-modal').style.display = 'flex';
+}
+
+function closeEditVP() {
+    document.getElementById('edit-vp-modal').style.display = 'none';
+}
+</script>
+
 {% endblock %}

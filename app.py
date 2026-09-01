@@ -399,6 +399,24 @@ def video_push_add():
     return redirect(url_for('video_push'))
 
 
+@app.route('/video-push/<int:tid>/edit', methods=['POST'])
+@login_required
+def video_push_edit(tid):
+    """编辑视频推流任务"""
+    task = VideoPush.query.get_or_404(tid)
+    if task.status == 'running':
+        return jsonify({'ok': False, 'message': '请先停止推流再编辑'})
+    task.name = request.form.get('name', task.name).strip()
+    task.source_url = request.form.get('source_url', '').strip() or None
+    task.file_path = request.form.get('file_path', '').strip() or None
+    task.source_type = request.form.get('source_type', task.source_type).strip()
+    target_id = request.form.get('push_target_id', '').strip()
+    task.push_target_id = int(target_id) if target_id else task.push_target_id
+    task.loop = request.form.get('loop') == 'on'
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'任务 {task.name} 已更新'})
+
+
 @app.route('/video-push/<int:tid>/delete', methods=['POST'])
 @login_required
 def video_push_delete(tid):
