@@ -5,32 +5,123 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 - StreamBridge</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body.login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        .login-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.15);
+        }
+        .login-header { text-align: center; margin-bottom: 36px; }
+        .login-logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px; height: 72px;
+            font-size: 36px;
+            background: linear-gradient(135deg, #6c5ce7, #0984e3);
+            border-radius: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(108,92,231,0.3);
+        }
+        .login-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0 0 6px;
+            color: #1a202c;
+        }
+        .login-header p { color: #64748b; font-size: 13px; margin: 0; }
+        .login-form .form-group { margin-bottom: 20px; }
+        .login-form label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .login-form input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #f7f8fa;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            color: #1a202c;
+            font-size: 14px;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+        .login-form input:focus {
+            outline: none;
+            border-color: #6c5ce7;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(108,92,231,0.1);
+        }
+        .login-form input::placeholder { color: #a0aec0; }
+        .login-form button {
+            width: 100%;
+            padding: 13px;
+            margin-top: 8px;
+            background: linear-gradient(135deg, #6c5ce7, #5a4bd1);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .login-form button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(108,92,231,0.3);
+        }
+        .login-form button:active { transform: translateY(0); }
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            color: #a0aec0;
+            font-size: 12px;
+        }
+        @media (max-width: 480px) {
+            .login-card { padding: 32px 24px; }
+        }
+    </style>
 </head>
 <body class="login-page">
     <div class="login-card">
         <div class="login-header">
-            <span class="login-logo">🎥</span>
+            <div class="login-logo">🎥</div>
             <h1>StreamBridge</h1>
             <p>直播转推YouTube管理平台</p>
         </div>
         <form method="POST" class="login-form">
             <div class="form-group">
                 <label>用户名</label>
-                <input type="text" name="username" required autofocus placeholder="admin">
+                <input type="text" name="username" required autofocus placeholder="请输入用户名">
             </div>
             <div class="form-group">
                 <label>密码</label>
-                <input type="password" name="password" required placeholder="••••••">
+                <input type="password" name="password" required placeholder="请输入密码">
             </div>
-            <button type="submit" class="btn btn-primary btn-block">登录</button>
+            <button type="submit">登 录</button>
         </form>
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
-        <div class="flash flash-{{ category }}">{{ message }}</div>
+        <div class="flash flash-{{ category }}" style="margin-top:16px;">{{ message }}</div>
         {% endfor %}
         {% endif %}
         {% endwith %}
+        <div class="login-footer">StreamBridge v1.0 · Powered by FFmpeg + yt-dlp</div>
     </div>
 </body>
 </html>

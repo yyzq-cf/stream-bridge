@@ -22,7 +22,7 @@
             <a href="{{ url_for('users') }}" class="{% if request.endpoint == 'users' %}active{% endif %}">用户</a>
             {% endif %}
         </div>
-        <div class="nav-user">
+        <div class="nav-user"><button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</button>
             <span>{{ current_user.username }}</span>
             <a href="{{ url_for('logout') }}" class="btn-logout">退出</a>
         </div>

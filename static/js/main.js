@@ -275,3 +275,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ─── 主题切换 ───
+function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    const btn = document.querySelector('.theme-toggle');
+    if (btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
+}
+
+// 应用保存的主题
+(function() {
+    const saved = localStorage.getItem('theme') || 'light';
+    if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.querySelector('.theme-toggle');
+            if (btn) btn.textContent = '☀️';
+        });
+    }
+})();
