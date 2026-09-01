@@ -15,7 +15,8 @@
 ### 视频文件推流
 - **本地文件上传**：支持mp4/mkv等格式，带实时进度条（百分比+速度+大小）
 - **在线视频直链**：直接填写URL，FFmpeg拉取推流
-- **循环推流**：视频结束后自动重头开始，24小时不间断
+- **目录循环推流**：扫描服务器目录下所有视频文件，按文件名排序拼接循环播放，24小时不间断
+- **循环推流**：视频结束后自动重头开始
 - **在线编辑**：任务名称、URL、文件路径、推流目标随时修改
 
 ### 用户管理
@@ -130,7 +131,7 @@ stream-bridge/
 ├── models.py              # 数据模型(User/Streamer/PushTarget/ActiveStream/VideoPush/StreamLog/Setting)
 ├── monitor_engine.py      # 监控引擎(自动检测开播+推流)
 ├── stream_engine.py       # 直播推流引擎(FFmpeg管理+码率统计)
-├── video_engine.py        # 视频推流引擎(文件/URL推流+循环)
+├── video_engine.py        # 视频推流引擎(文件/URL/目录推流+循环)
 ├── platforms/             # 平台检测器
 │   ├── douyin.py          # 抖音直播检测(FLV流提取+URL清理+503重试)
 │   └── kuaishou.py        # 快手直播检测(curl+gzip/brotli+Cookie+代理)
