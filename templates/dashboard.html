@@ -16,7 +16,7 @@
     </div>
     <div class="stat-card">
         <div class="stat-icon">📺</div>
-        <div class="stat-value">{{ active_streams|length }}</div>
+        <div class="stat-value">{{ total_active }}</div>
         <div class="stat-label">推流中</div>
     </div>
     <div class="stat-card">
@@ -42,7 +42,7 @@
             <h2>活跃推流</h2>
         </div>
         <div class="panel-body">
-            {% if active_streams %}
+            {% if active_streams or active_video_pushes %}
             <table class="table">
                 <thead>
                     <tr>
@@ -66,6 +66,21 @@
                             {{ s.started_at.strftime('%H:%M:%S') if s.started_at else '-' }}
                         </td>
                         <td><button class="btn btn-sm btn-danger" onclick="stopPush({{ s.streamer_id }})">停止</button></td>
+                    </tr>
+                    {% endfor %}
+                    {% for v in active_video_pushes %}
+                    <tr id="active-vp-{{ v.id }}" data-vp-id="{{ v.id }}">
+                        <td>🎬 {{ v.name }}</td>
+                        <td>{{ v.push_target.name if v.push_target else '-' }}</td>
+                        <td>
+                            <span class="badge badge-success">视频推流中</span>
+                        </td>
+                        <td class="vp-in" id="vp-in-{{ v.id }}">-</td>
+                        <td class="vp-out" id="vp-out-{{ v.id }}">-</td>
+                        <td class="vp-uptime" id="vp-uptime-{{ v.id }}">
+                            {{ v.started_at.strftime('%H:%M:%S') if v.started_at else '-' }}
+                        </td>
+                        <td><button class="btn btn-sm btn-danger" onclick="stopVP({{ v.id }})">停止</button></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -151,10 +166,34 @@ async function refreshStreamStats() {
     }
 }
 
+// 视频推流码率轮询
+async function refreshVPStats() {
+    const rows = document.querySelectorAll('[id^="active-vp-"]');
+    for (const row of rows) {
+        const id = row.dataset.vpId;
+        try {
+            const resp = await fetch(`/api/video-push/stats/${id}`);
+            const data = await resp.json();
+            if (data.ok) {
+                const inEl = document.getElementById(`vp-in-${id}`);
+                const outEl = document.getElementById(`vp-out-${id}`);
+                const upEl = document.getElementById(`vp-uptime-${id}`);
+                if (inEl) inEl.textContent = data.input_bitrate || '-';
+                if (outEl) outEl.textContent = data.output_bitrate || '-';
+                if (upEl) upEl.textContent = data.uptime || '-';
+            }
+        } catch(e) {}
+    }
+}
+
 // 每3秒刷新码率
 if (document.querySelectorAll('[id^="active-stream-"]').length > 0) {
     setInterval(refreshStreamStats, 3000);
     refreshStreamStats();
+}
+if (document.querySelectorAll('[id^="active-vp-"]').length > 0) {
+    setInterval(refreshVPStats, 3000);
+    refreshVPStats();
 }
 </script>
 {% endblock %}

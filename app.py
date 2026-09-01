@@ -163,13 +163,20 @@ def dashboard():
     active_streams = ActiveStream.query.filter(
         ActiveStream.status.in_(['running', 'starting'])
     ).all()
+    active_video_pushes = VideoPush.query.filter(
+        VideoPush.status == 'running'
+    ).all()
     targets = PushTarget.query.all()
     recent_logs = StreamLog.query.order_by(
         StreamLog.timestamp.desc()
     ).limit(20).all()
+    # 合并推流总数
+    total_active = len(active_streams) + len(active_video_pushes)
     return render_template('dashboard.html',
                            streamers=streamers,
                            active_streams=active_streams,
+                           active_video_pushes=active_video_pushes,
+                           total_active=total_active,
                            targets=targets,
                            recent_logs=recent_logs)
 
