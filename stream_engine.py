@@ -219,11 +219,12 @@ def get_stream_stats(active_stream_id):
         return None
     
     pid = as_record.ffmpeg_pid
-    if not pid or pid not in active_processes:
+    if not pid:
         return None
     
     try:
         import time as _time
+        import os
         
         def read_io():
             """读取进程IO字节数"""
@@ -238,6 +239,10 @@ def get_stream_stats(active_stream_id):
             except:
                 pass
             return r, w
+        
+        # 检查进程是否还活着
+        if not os.path.exists(f'/proc/{pid}'):
+            return None
         
         r1, w1 = read_io()
         _time.sleep(1.5)

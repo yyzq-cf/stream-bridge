@@ -165,10 +165,17 @@ def _process_streamer(streamer):
     ).first()
 
     if active:
-        # 已在推流, 检查源流是否还活着
-        from stream_engine import get_ffmpeg_status
-        status = get_ffmpeg_status(active.id)
-        if status == 'dead' or status == 'error':
+        # 已在推流, 检查ffmpeg进程是否还活着
+        import os
+        pid_alive = False
+        if active.ffmpeg_pid:
+            try:
+                os.kill(active.ffmpeg_pid, 0)
+                pid_alive = True
+            except:
+                pid_alive = False
+        
+        if not pid_alive and active.status == 'running':
             # FFmpeg挂了, 尝试重启
             _add_log(streamer.id, 'warning', 'ffmpeg_dead',
                      f'检测到FFmpeg进程异常({status}), 尝试重新拉流')
@@ -201,8 +208,8 @@ def _process_streamer(streamer):
             streamer.is_live = True
             streamer.last_live_at = datetime.utcnow()
             db.session.commit()
-            # 自动启动推流
-            _auto_start_push(streamer, stream_url)
+        # 在直播就自动推流(新开播或之前推流失败都会触发)
+        _auto_start_push(streamer, stream_url)
     else:
         if streamer.is_live:
             streamer.is_live = False
