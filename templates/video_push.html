@@ -219,34 +219,91 @@ function checkSubmit() {
 document.getElementById('source-url').addEventListener('input', checkSubmit);
 
 // 文件上传
-document.getElementById('file-input').addEventListener('change', async function() {
+document.getElementById('file-input').addEventListener('change', function() {
     const file = this.files[0];
     if (!file) return;
 
     const statusEl = document.getElementById('upload-status');
     const submitBtn = document.getElementById('submit-btn');
-    statusEl.textContent = '⏳ 上传中... ' + file.name;
-    statusEl.style.color = 'var(--text-dim)';
+
+    // 格式化文件大小
+    function formatSize(bytes) {
+        if (bytes > 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+        if (bytes > 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+        if (bytes > 1024) return (bytes / 1024).toFixed(0) + ' KB';
+        return bytes + ' B';
+    }
+
+    const fileSize = formatSize(file.size);
+
+    // 创建进度条UI
+    statusEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<span>⏳ 上传中</span>' +
+        '<span style="color:var(--text-dim);font-size:12px;">' + file.name + ' (' + fileSize + ')</span>' +
+        '</div>' +
+        '<div style="margin-top:8px;background:var(--bg);border-radius:6px;overflow:hidden;height:20px;border:1px solid var(--border);">' +
+        '<div id="upload-progress-bar" style="width:0%;height:100%;background:linear-gradient(90deg,var(--primary),var(--info));transition:width 0.3s;border-radius:5px;"></div>' +
+        '</div>' +
+        '<div style="margin-top:4px;display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);">' +
+        '<span id="upload-percent">0%</span>' +
+        '<span id="upload-speed"></span>' +
+        '</div>';
+    statusEl.style.color = 'var(--text)';
+    submitBtn.disabled = true;
 
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-        const resp = await fetch('/video-push/upload', { method: 'POST', body: formData });
-        const data = await resp.json();
-        if (data.ok) {
-            statusEl.textContent = '✅ ' + data.message;
-            statusEl.style.color = 'var(--success)';
-            document.getElementById('file-path').value = data.filepath;
-            checkSubmit();
-        } else {
-            statusEl.textContent = '❌ ' + data.message;
-            statusEl.style.color = 'var(--danger)';
+    const xhr = new XMLHttpRequest();
+    const startTime = Date.now();
+
+    // 上传进度
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            const bar = document.getElementById('upload-progress-bar');
+            const pct = document.getElementById('upload-percent');
+            const spd = document.getElementById('upload-speed');
+            if (bar) bar.style.width = percent + '%';
+            if (pct) pct.textContent = percent + '%';
+            if (spd) {
+                const elapsed = (Date.now() - startTime) / 1000;
+                if (elapsed > 0) {
+                    const speed = e.loaded / elapsed;
+                    let speedStr;
+                    if (speed > 1048576) speedStr = (speed / 1048576).toFixed(1) + ' MB/s';
+                    else speedStr = (speed / 1024).toFixed(0) + ' KB/s';
+                    const uploaded = formatSize(e.loaded);
+                    const total = formatSize(e.total);
+                    spd.textContent = uploaded + ' / ' + total + ' · ' + speedStr;
+                }
+            }
         }
-    } catch(e) {
-        statusEl.textContent = '❌ 上传失败: ' + e.message;
-        statusEl.style.color = 'var(--danger)';
-    }
+    });
+
+    // 上传完成
+    xhr.addEventListener('load', function() {
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.ok) {
+                statusEl.innerHTML = '<div style="color:var(--success);">✅ ' + data.message + '</div>';
+                document.getElementById('file-path').value = data.filepath;
+                checkSubmit();
+            } else {
+                statusEl.innerHTML = '<div style="color:var(--danger);">❌ ' + data.message + '</div>';
+            }
+        } catch(e) {
+            statusEl.innerHTML = '<div style="color:var(--danger);">❌ 解析响应失败</div>';
+        }
+    });
+
+    // 上传错误
+    xhr.addEventListener('error', function() {
+        statusEl.innerHTML = '<div style="color:var(--danger);">❌ 上传失败: 网络错误</div>';
+    });
+
+    xhr.open('POST', '/video-push/upload');
+    xhr.send(formData);
 });
 
 // 启动推流
