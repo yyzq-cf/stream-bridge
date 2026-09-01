@@ -227,14 +227,14 @@ def get_stream_stats(active_stream_id):
         import os
         
         def read_io():
-            """读取进程IO字节数"""
+            """读取进程IO字节数(rchar=总读取字节含网络, wchar=总写入字节)"""
             r, w = 0, 0
             try:
                 with open(f'/proc/{pid}/io', 'r') as f:
                     for line in f:
-                        if line.startswith('read_bytes'):
+                        if line.startswith('rchar:'):
                             r = int(line.split()[1])
-                        elif line.startswith('write_bytes'):
+                        elif line.startswith('wchar:'):
                             w = int(line.split()[1])
             except:
                 pass

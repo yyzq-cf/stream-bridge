@@ -453,7 +453,34 @@ def video_push_stats(tid):
         m, s = divmod(rem, 60)
         uptime = f'{h:02d}:{m:02d}:{s:02d}'
 
-    return jsonify({'ok': True, 'status': task.status, 'uptime': uptime, 'pid': task.ffmpeg_pid})
+    # 码率统计
+    import time as _time
+    r1 = w1 = 0
+    try:
+        with open(f'/proc/{task.ffmpeg_pid}/io', 'r') as f:
+            for line in f:
+                if line.startswith('rchar:'): r1 = int(line.split()[1])
+                elif line.startswith('wchar:'): w1 = int(line.split()[1])
+    except: pass
+    _time.sleep(1.5)
+    r2 = w2 = 0
+    try:
+        with open(f'/proc/{task.ffmpeg_pid}/io', 'r') as f:
+            for line in f:
+                if line.startswith('rchar:'): r2 = int(line.split()[1])
+                elif line.startswith('wchar:'): w2 = int(line.split()[1])
+    except: pass
+
+    read_bps = (r2 - r1) * 8 // 1.5
+    write_bps = (w2 - w1) * 8 // 1.5
+
+    def fmt(bps):
+        if bps > 1_000_000: return f'{bps/1_000_000:.1f} Mbps'
+        elif bps > 1_000: return f'{bps/1_000:.0f} kbps'
+        else: return f'{bps} bps'
+
+    return jsonify({'ok': True, 'status': task.status, 'uptime': uptime, 'pid': task.ffmpeg_pid,
+                    'input_bitrate': fmt(read_bps), 'output_bitrate': fmt(write_bps)})
 
 
 @app.route('/settings')

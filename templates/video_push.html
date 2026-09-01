@@ -65,8 +65,8 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th>ID</th><th>名称</th><th>来源</th><th>类型</th><th>推流目标</th>
-                    <th>循环</th><th>状态</th><th>时长</th><th>操作</th>
+                    <th>ID</th><th>名称</th><th>来源</th><th>类型</th><th>推流目标</th><th>输入码率</th><th>输出码率</th>
+                    <th>循环</th><th>状态</th><th>输入</th><th>输出</th><th>时长</th><th>操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -89,6 +89,8 @@
                             {{ '推流中' if t.status == 'running' else ('错误' if t.status == 'error' else '已停止') }}
                         </span>
                     </td>
+                    <td id="vp-in-{{ t.id }}">-</td>
+                    <td id="vp-out-{{ t.id }}">-</td>
                     <td id="vp-uptime-{{ t.id }}">-</td>
                     <td class="action-buttons">
                         {% if t.status == 'running' %}
@@ -206,6 +208,10 @@ async function refreshVP() {
             if (data.ok) {
                 const upEl = document.getElementById(`vp-uptime-${id}`);
                 if (upEl) upEl.textContent = data.uptime || '-';
+                const inEl = document.getElementById(`vp-in-${id}`);
+                if (inEl) inEl.textContent = data.input_bitrate || '-';
+                const outEl = document.getElementById(`vp-out-${id}`);
+                if (outEl) outEl.textContent = data.output_bitrate || '-';
             }
         } catch(e) {}
     }
