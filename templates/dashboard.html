@@ -26,6 +26,16 @@
     </div>
 </div>
 
+<div class="panel" style="margin-bottom:20px;">
+    <div class="panel-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span style="font-weight:600;">⏱️ 监控间隔：</span>
+        <input type="number" id="monitor-interval-input" min="10" max="600" value="60" style="width:80px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;">
+        <span style="color:var(--text-dim);font-size:13px;">秒</span>
+        <button class="btn btn-primary btn-sm" onclick="updateMonitorInterval()">保存</button>
+        <span id="monitor-interval-hint" style="color:var(--text-dim);font-size:13px;"></span>
+    </div>
+</div>
+
 <div class="dashboard-grid">
     <div class="panel">
         <div class="panel-header">
@@ -86,6 +96,30 @@
 </div>
 
 <script>
+// 加载当前监控间隔
+async function loadMonitorInterval() {
+    try {
+        const resp = await fetch('/api/monitor-interval');
+        const data = await resp.json();
+        if (data.ok) {
+            document.getElementById('monitor-interval-input').value = data.interval;
+            document.getElementById('monitor-interval-hint').textContent = `(当前: ${data.interval}秒)`;
+        }
+    } catch(e) {}
+}
+
+// 更新监控间隔
+async function updateMonitorInterval() {
+    const val = document.getElementById('monitor-interval-input').value;
+    const r = await api('/api/monitor-interval', 'POST', { seconds: val });
+    if (r.ok) {
+        showToast(`✅ ${r.message}`, 'success');
+        document.getElementById('monitor-interval-hint').textContent = `(当前: ${r.interval}秒)`;
+    } else {
+        showToast('❌ ' + (r.message || '设置失败'), 'error');
+    }
+}
+
 // 码率轮询
 async function refreshStreamStats() {
     const rows = document.querySelectorAll('[id^="active-stream-"]');

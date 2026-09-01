@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 monitor_running = False
 monitor_thread = None
+monitor_interval = Config.MONITOR_INTERVAL  # 可动态修改
 
 
 def check_streamer_live(streamer):
@@ -125,6 +126,19 @@ def stop_monitor():
     monitor_running = False
 
 
+def set_interval(seconds):
+    """动态修改监控间隔"""
+    global monitor_interval
+    monitor_interval = max(10, int(seconds))
+    logger.info(f"监控间隔已修改为 {monitor_interval}秒")
+    return monitor_interval
+
+
+def get_interval():
+    """获取当前监控间隔"""
+    return monitor_interval
+
+
 def _monitor_loop():
     """监控主循环"""
     from app import app
@@ -134,8 +148,9 @@ def _monitor_loop():
                 _check_all_streamers()
         except Exception as e:
             logger.error(f"监控循环异常: {e}")
-        # 等待下一轮
-        for _ in range(Config.MONITOR_INTERVAL):
+        # 等待下一轮(用全局变量,可动态修改)
+        interval = monitor_interval
+        for _ in range(interval):
             if not monitor_running:
                 break
             time.sleep(1)

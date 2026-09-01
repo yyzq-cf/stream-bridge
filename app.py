@@ -430,6 +430,21 @@ def api_stream_stats(sid):
     return jsonify(stats)
 
 
+@app.route('/api/monitor-interval', methods=['GET', 'POST'])
+@login_required
+def api_monitor_interval():
+    """获取或设置监控间隔"""
+    from monitor_engine import get_interval, set_interval
+    if request.method == 'POST':
+        seconds = request.form.get('seconds', '60').strip()
+        try:
+            val = set_interval(int(seconds))
+            return jsonify({'ok': True, 'interval': val, 'message': f'监控间隔已设为 {val}秒'})
+        except ValueError:
+            return jsonify({'ok': False, 'message': '请输入有效数字'})
+    return jsonify({'ok': True, 'interval': get_interval()})
+
+
 @app.route('/api/status')
 @login_required
 def api_status():
