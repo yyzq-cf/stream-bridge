@@ -178,7 +178,7 @@ def _process_streamer(streamer):
         if not pid_alive and active.status == 'running':
             # FFmpeg挂了, 尝试重启
             _add_log(streamer.id, 'warning', 'ffmpeg_dead',
-                     f'检测到FFmpeg进程异常({status}), 尝试重新拉流')
+                     f'检测到FFmpeg进程异常(PID已退出), 尝试重新拉流')
             from stream_engine import stop_ffmpeg_push, start_ffmpeg_push
             stop_ffmpeg_push(active.id, force=True)
             # 重新检测并推流
