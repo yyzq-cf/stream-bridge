@@ -136,6 +136,7 @@ def add_streamer():
 @login_required
 def delete_streamer(sid):
     streamer = Streamer.query.get_or_404(sid)
+    name = streamer.name
     active = ActiveStream.query.filter_by(
         streamer_id=sid, status='running'
     ).first()
@@ -143,8 +144,7 @@ def delete_streamer(sid):
         stream_engine.stop_ffmpeg_push(active.id, force=True)
     db.session.delete(streamer)
     db.session.commit()
-    flash(f'博主 {streamer.name} 已删除', 'success')
-    return redirect(url_for('streamers'))
+    return jsonify({'ok': True, 'message': f'博主 {name} 已删除'})
 
 
 @app.route('/streamers/<int:sid>/toggle', methods=['POST'])
