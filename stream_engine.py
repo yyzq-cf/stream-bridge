@@ -210,3 +210,65 @@ def _add_log(streamer_id, level, action, message):
     )
     db.session.add(log)
     db.session.commit()
+
+
+def get_stream_stats(active_stream_id):
+    """获取FFmpeg推流的实时码率统计 - 通过/proc/{pid}/io读取字节数"""
+    as_record = ActiveStream.query.get(active_stream_id)
+    if not as_record or as_record.status != 'running':
+        return None
+    
+    pid = as_record.ffmpeg_pid
+    if not pid or pid not in active_processes:
+        return None
+    
+    try:
+        import time as _time
+        
+        def read_io():
+            """读取进程IO字节数"""
+            r, w = 0, 0
+            try:
+                with open(f'/proc/{pid}/io', 'r') as f:
+                    for line in f:
+                        if line.startswith('read_bytes'):
+                            r = int(line.split()[1])
+                        elif line.startswith('write_bytes'):
+                            w = int(line.split()[1])
+            except:
+                pass
+            return r, w
+        
+        r1, w1 = read_io()
+        _time.sleep(1.5)
+        r2, w2 = read_io()
+        
+        read_bps = (r2 - r1) * 8 // 1.5
+        write_bps = (w2 - w1) * 8 // 1.5
+        
+        def fmt(bps):
+            if bps > 1_000_000:
+                return f'{bps/1_000_000:.1f} Mbps'
+            elif bps > 1_000:
+                return f'{bps/1_000:.0f} kbps'
+            else:
+                return f'{bps} bps'
+        
+        # 运行时长
+        uptime = '-'
+        if as_record.started_at:
+            delta = datetime.utcnow() - as_record.started_at
+            hours, remainder = divmod(int(delta.total_seconds()), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            uptime = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+        
+        return {
+            'input_bitrate': fmt(read_bps),
+            'output_bitrate': fmt(write_bps),
+            'input_kbps': round(read_bps / 1000, 1),
+            'output_kbps': round(write_bps / 1000, 1),
+            'uptime': uptime,
+        }
+    except Exception as e:
+        logger.debug(f"获取码率失败: {e}")
+        return None

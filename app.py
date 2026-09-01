@@ -392,6 +392,27 @@ def reset_password(uid):
 
 # ─── API: 状态 ───
 
+@app.route('/api/stream-stats/<int:sid>')
+@login_required
+def api_stream_stats(sid):
+    """获取推流实时码率统计"""
+    active = ActiveStream.query.filter_by(
+        streamer_id=sid
+    ).filter(ActiveStream.status.in_(['running', 'starting'])).first()
+    if not active:
+        return jsonify({'ok': False, 'message': '无活跃推流'})
+    
+    from stream_engine import get_stream_stats
+    stats = get_stream_stats(active.id)
+    if not stats:
+        return jsonify({'ok': False, 'message': '获取失败'})
+    
+    stats['ok'] = True
+    stats['status'] = active.status
+    stats['target'] = active.push_target.name if active.push_target else '-'
+    return jsonify(stats)
+
+
 @app.route('/api/status')
 @login_required
 def api_status():

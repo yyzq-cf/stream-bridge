@@ -22,7 +22,7 @@
     <div class="stat-card">
         <div class="stat-icon">🔑</div>
         <div class="stat-value">{{ targets|length }}</div>
-        <div class="stat-label">YouTube频道</div>
+        <div class="stat-label">推流目标</div>
     </div>
 </div>
 
@@ -35,15 +35,26 @@
             {% if active_streams %}
             <table class="table">
                 <thead>
-                    <tr><th>博主</th><th>标题</th><th>状态</th><th>开始时间</th><th>操作</th></tr>
+                    <tr>
+                        <th>博主</th><th>推流目标</th><th>状态</th>
+                        <th>输入码率</th><th>输出码率</th><th>时长</th><th>操作</th>
+                    </tr>
                 </thead>
                 <tbody>
                     {% for s in active_streams %}
-                    <tr>
+                    <tr id="active-stream-{{ s.streamer_id }}" data-streamer-id="{{ s.streamer_id }}">
                         <td>{{ s.streamer.name if s.streamer else '-' }}</td>
-                        <td>{{ s.broadcast_title }}</td>
-                        <td><span class="badge badge-{{ 'success' if s.status == 'running' else 'warning' }}">{{ s.status }}</span></td>
-                        <td>{{ s.started_at.strftime('%H:%M:%S') if s.started_at else '-' }}</td>
+                        <td>{{ s.push_target.name if s.push_target else '-' }}</td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if s.status == 'running' else 'warning' }}">
+                                {{ '推流中' if s.status == 'running' else s.status }}
+                            </span>
+                        </td>
+                        <td class="stats-in" id="stats-in-{{ s.streamer_id }}">-</td>
+                        <td class="stats-out" id="stats-out-{{ s.streamer_id }}">-</td>
+                        <td class="stats-uptime" id="stats-uptime-{{ s.streamer_id }}">
+                            {{ s.started_at.strftime('%H:%M:%S') if s.started_at else '-' }}
+                        </td>
                         <td><button class="btn btn-sm btn-danger" onclick="stopPush({{ s.streamer_id }})">停止</button></td>
                     </tr>
                     {% endfor %}
@@ -73,4 +84,43 @@
         </div>
     </div>
 </div>
+
+<script>
+// 码率轮询
+async function refreshStreamStats() {
+    const rows = document.querySelectorAll('[id^="active-stream-"]');
+    for (const row of rows) {
+        const sid = row.dataset.streamerId;
+        try {
+            const resp = await fetch(`/api/stream-stats/${sid}`);
+            const data = await resp.json();
+            if (data.ok) {
+                const inEl = document.getElementById(`stats-in-${sid}`);
+                const outEl = document.getElementById(`stats-out-${sid}`);
+                const upEl = document.getElementById(`stats-uptime-${sid}`);
+                if (inEl) inEl.textContent = data.input_bitrate || '-';
+                if (outEl) outEl.textContent = data.output_bitrate || '-';
+                if (upEl) upEl.textContent = data.uptime || '-';
+                // 码率高低用颜色区分
+                if (inEl && data.input_kbps) {
+                    if (data.input_kbps > 2000) inEl.style.color = '#00b894';
+                    else if (data.input_kbps > 500) inEl.style.color = '#0984e3';
+                    else inEl.style.color = '#f59e0b';
+                }
+                if (outEl && data.output_kbps) {
+                    if (data.output_kbps > 2000) outEl.style.color = '#00b894';
+                    else if (data.output_kbps > 500) outEl.style.color = '#0984e3';
+                    else outEl.style.color = '#f59e0b';
+                }
+            }
+        } catch(e) {}
+    }
+}
+
+// 每3秒刷新码率
+if (document.querySelectorAll('[id^="active-stream-"]').length > 0) {
+    setInterval(refreshStreamStats, 3000);
+    refreshStreamStats();
+}
+</script>
 {% endblock %}
