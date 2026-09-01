@@ -340,3 +340,18 @@ function editStreamer(id, name, platform, roomId, targetId) {
 function closeEditModal() {
     document.getElementById('edit-modal').style.display = 'none';
 }
+
+// ─── 保存Cookie ───
+async function saveCookie(platform) {
+    const cookie = document.getElementById('ks-cookie').value.trim();
+    if (!cookie) {
+        showToast('请输入Cookie', 'error');
+        return;
+    }
+    const r = await api('/settings/cookie', 'POST', { platform: 'kuaishou', cookie: cookie });
+    if (r.ok) {
+        showToast('✅ ' + r.message, 'success');
+    } else {
+        showToast('❌ ' + (r.message || '保存失败'), 'error');
+    }
+}

@@ -13,7 +13,7 @@ from flask_login import (LoginManager, login_user, logout_user,
                          login_required, current_user)
 
 from config import Config
-from models import db, User, Streamer, PushTarget, ActiveStream, StreamLog
+from models import db, User, Streamer, PushTarget, ActiveStream, StreamLog, Setting
 from monitor_engine import start_monitor, stop_monitor
 import stream_engine
 
@@ -257,6 +257,30 @@ def stop_manual_push(sid):
 
 
 # ─── 推流目标管理(替代YouTube OAuth) ───
+
+@app.route('/settings')
+@login_required
+def settings():
+    kuaishou_cookie = Setting.query.filter_by(key='kuaishou_cookie').first()
+    kuaishou_cookie = kuaishou_cookie.value if kuaishou_cookie else ''
+    return render_template('settings.html', kuaishou_cookie=kuaishou_cookie)
+
+
+@app.route('/settings/cookie', methods=['POST'])
+@login_required
+def update_cookie():
+    platform = request.form.get('platform', '').strip()
+    cookie = request.form.get('cookie', '').strip()
+    key = f'{platform}_cookie'
+    s = Setting.query.filter_by(key=key).first()
+    if s:
+        s.value = cookie
+    else:
+        s = Setting(key=key, value=cookie)
+        db.session.add(s)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'{platform} Cookie已保存'})
+
 
 @app.route('/targets')
 @login_required

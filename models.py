@@ -87,3 +87,10 @@ class StreamLog(db.Model):
     action = db.Column(db.String(100))
     message = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Setting(db.Model):
+    """系统设置表(key-value)"""
+    __tablename__ = 'settings'
+    key = db.Column(db.String(100), primary_key=True)
+    value = db.Column(db.Text)

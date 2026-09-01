@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}系统设置 - StreamBridge{% endblock %}
+{% block content %}
+<h1 class="page-title">系统设置</h1>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>快手 Cookie 配置</h2>
+    </div>
+    <div class="panel-body">
+        <p style="margin-bottom:12px;color:var(--text-dim);font-size:13px;">
+            快手对服务器IP有频率限制，配置Cookie可以绕过限制正常检测直播状态。<br>
+            <strong>获取方法：</strong><br>
+            1. 用浏览器打开任意快手直播间 <code>https://live.kuaishou.com/xxx</code><br>
+            2. 按 <kbd>F12</kbd> 打开开发者工具 → Network 标签<br>
+            3. 刷新页面，点击第一个请求，找到 Request Headers 里的 <code>Cookie</code><br>
+            4. 复制完整的Cookie值粘贴到下面
+        </p>
+        <form id="cookie-form" style="margin-top:16px;" onsubmit="event.preventDefault(); saveCookie('kuaishou');">
+            <div class="form-group">
+                <label>快手 Cookie</label>
+                <textarea name="cookie" id="ks-cookie" class="form-control" rows="4"
+                    placeholder="粘贴快手Cookie，例如: clientid=3; did=web_xxx; kpf=PC_WEB; kpn=GAME_ZONE; ..."
+                    style="font-family:monospace;font-size:12px;">{{ kuaishou_cookie }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">保存 Cookie</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
