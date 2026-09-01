@@ -29,34 +29,33 @@ def start_video_push(task_id):
         if not target:
             return False, '推流目标不存在'
 
+        # 源地址: 在线URL或本地文件
+        source = task.source_url if task.source_type == 'url' and task.source_url else task.file_path
+
         # 构建FFmpeg命令
-        cmd = [
+        base_cmd = [
             Config.FFMPEG_PATH,
             '-hide_banner',
             '-loglevel', 'warning',
+        ]
+
+        # 循环推流(仅本地文件支持循环)
+        if task.loop and task.source_type == 'file':
+            base_cmd += ['-stream_loop', '-1']
+
+        base_cmd += [
             '-re',  # 按原始帧率读取
-            '-i', task.file_path,
+            '-i', source,
             '-c:v', Config.DEFAULT_VIDEO_CODEC,
             '-c:a', Config.DEFAULT_AUDIO_CODEC,
             '-b:a', Config.DEFAULT_AUDIO_BITRATE,
             '-ar', '44100',
             '-f', 'flv',
             '-flvflags', 'no_duration_filesize',
+            f'{target.rtmp_url}/{target.stream_key}'
         ]
 
-        # 循环推流
-        if task.loop:
-            # 用-stream_loop -1放在-i前面
-            cmd = [Config.FFMPEG_PATH, '-hide_banner', '-loglevel', 'warning',
-                   '-stream_loop', '-1', '-re', '-i', task.file_path,
-                   '-c:v', Config.DEFAULT_VIDEO_CODEC,
-                   '-c:a', Config.DEFAULT_AUDIO_CODEC,
-                   '-b:a', Config.DEFAULT_AUDIO_BITRATE,
-                   '-ar', '44100',
-                   '-f', 'flv', '-flvflags', 'no_duration_filesize',
-                   f'{target.rtmp_url}/{target.stream_key}']
-        else:
-            cmd.append(f'{target.rtmp_url}/{target.stream_key}')
+        cmd = base_cmd
 
         try:
             proc = subprocess.Popen(

@@ -13,12 +13,29 @@
                 <label>任务名称</label>
                 <input type="text" name="name" class="form-control" placeholder="如: 测试视频推流" required>
             </div>
+
             <div class="form-group">
+                <label>视频来源</label>
+                <div style="display:flex;gap:16px;margin-bottom:8px;">
+                    <label class="checkbox-label"><input type="radio" name="source_type" value="file" checked onchange="toggleSource()"> 上传本地文件</label>
+                    <label class="checkbox-label"><input type="radio" name="source_type" value="url" onchange="toggleSource()"> 在线视频直链</label>
+                </div>
+            </div>
+
+            <div class="form-group" id="file-section">
                 <label>上传视频文件</label>
-                <input type="file" name="file" id="file-input" accept="video/*" required style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+                <input type="file" name="file" id="file-input" accept="video/*" style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
                 <div id="upload-status" style="margin-top:8px;font-size:13px;"></div>
                 <input type="hidden" name="file_path" id="file-path">
             </div>
+
+            <div class="form-group" id="url-section" style="display:none;">
+                <label>在线视频直链URL</label>
+                <input type="text" name="source_url" id="source-url" class="form-control"
+                    placeholder="https://example.com/video.mp4" style="font-family:monospace;font-size:13px;">
+                <p style="margin-top:6px;color:var(--text-dim);font-size:12px;">支持mp4/mkv/flv等直链，必须是可直接下载的视频文件URL</p>
+            </div>
+
             <div class="form-group">
                 <label>推流目标</label>
                 <select name="push_target_id" class="form-control" required>
@@ -31,7 +48,7 @@
             <div class="form-group">
                 <label class="checkbox-label"><input type="checkbox" name="loop"> 循环推流(视频结束后自动重头开始)</label>
             </div>
-            <button type="submit" class="btn btn-primary" id="submit-btn" disabled>添加并准备推流</button>
+            <button type="submit" class="btn btn-primary" id="submit-btn" disabled>添加推流任务</button>
         </form>
         {% if not targets %}
         <p style="margin-top:10px;color:var(--text-dim);font-size:13px;">⚠️ 还没有推流目标，请先到 <a href="{{ url_for('targets') }}">推流目标页面</a> 添加</p>
@@ -48,7 +65,7 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th>ID</th><th>名称</th><th>视频文件</th><th>推流目标</th>
+                    <th>ID</th><th>名称</th><th>来源</th><th>类型</th><th>推流目标</th>
                     <th>循环</th><th>状态</th><th>时长</th><th>操作</th>
                 </tr>
             </thead>
@@ -57,7 +74,14 @@
                 <tr id="vp-{{ t.id }}" data-id="{{ t.id }}">
                     <td>{{ t.id }}</td>
                     <td>{{ t.name }}</td>
-                    <td style="font-size:12px;word-break:break-all;">{{ t.file_path|replace('/app/data/uploads/', '') }}</td>
+                    <td style="font-size:12px;word-break:break-all;max-width:200px;">
+                        {% if t.source_type == 'url' %}
+                            {{ t.source_url[:60] }}{% if t.source_url|length > 60 %}...{% endif %}
+                        {% else %}
+                            {{ t.file_path|replace('/app/data/uploads/', '') }}
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge-{{ 'info' if t.source_type == 'url' else 'primary' }}">{{ '在线链接' if t.source_type == 'url' else '本地文件' }}</span></td>
                     <td>{{ t.push_target.name if t.push_target else '-' }}</td>
                     <td>{{ '✅' if t.loop else '-' }}</td>
                     <td>
@@ -85,19 +109,39 @@
 </div>
 
 <script>
+// 切换来源类型
+function toggleSource() {
+    const isUrl = document.querySelector('input[name="source_type"][value="url"]').checked;
+    document.getElementById('file-section').style.display = isUrl ? 'none' : '';
+    document.getElementById('url-section').style.display = isUrl ? '' : 'none';
+    checkSubmit();
+}
+
+function checkSubmit() {
+    const isUrl = document.querySelector('input[name="source_type"][value="url"]').checked;
+    const submitBtn = document.getElementById('submit-btn');
+    if (isUrl) {
+        submitBtn.disabled = !document.getElementById('source-url').value.trim();
+    } else {
+        submitBtn.disabled = !document.getElementById('file-path').value;
+    }
+}
+
+document.getElementById('source-url').addEventListener('input', checkSubmit);
+
 // 文件上传
 document.getElementById('file-input').addEventListener('change', async function() {
     const file = this.files[0];
     if (!file) return;
-    
+
     const statusEl = document.getElementById('upload-status');
     const submitBtn = document.getElementById('submit-btn');
     statusEl.textContent = '⏳ 上传中... ' + file.name;
     statusEl.style.color = 'var(--text-dim)';
-    
+
     const formData = new FormData();
     formData.append('file', file);
-    
+
     try {
         const resp = await fetch('/video-push/upload', { method: 'POST', body: formData });
         const data = await resp.json();
@@ -105,7 +149,7 @@ document.getElementById('file-input').addEventListener('change', async function(
             statusEl.textContent = '✅ ' + data.message;
             statusEl.style.color = 'var(--success)';
             document.getElementById('file-path').value = data.filepath;
-            submitBtn.disabled = false;
+            checkSubmit();
         } else {
             statusEl.textContent = '❌ ' + data.message;
             statusEl.style.color = 'var(--danger)';

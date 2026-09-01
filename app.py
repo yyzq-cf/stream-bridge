@@ -301,19 +301,29 @@ def video_push_add():
     """添加视频推流任务"""
     name = request.form.get('name', '').strip()
     file_path = request.form.get('file_path', '').strip()
+    source_url = request.form.get('source_url', '').strip()
     target_id = request.form.get('push_target_id', '').strip()
     loop = request.form.get('loop') == 'on'
 
-    if not name or not file_path or not target_id:
-        return jsonify({'ok': False, 'message': '名称、文件、推流目标不能为空'})
+    if not name or not target_id:
+        return jsonify({'ok': False, 'message': '名称和推流目标不能为空'})
 
-    import os
-    if not os.path.exists(file_path):
-        return jsonify({'ok': False, 'message': '视频文件不存在'})
+    if not file_path and not source_url:
+        return jsonify({'ok': False, 'message': '请上传文件或填写在线视频URL'})
+
+    if file_path:
+        import os
+        if not os.path.exists(file_path):
+            return jsonify({'ok': False, 'message': '视频文件不存在'})
+        source_type = 'file'
+    else:
+        source_type = 'url'
 
     task = VideoPush(
         name=name,
-        file_path=file_path,
+        file_path=file_path if file_path else None,
+        source_url=source_url if source_url else None,
+        source_type=source_type,
         push_target_id=int(target_id),
         loop=loop
     )

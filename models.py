@@ -101,7 +101,9 @@ class VideoPush(db.Model):
     __tablename__ = 'video_pushes'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)          # 推流任务名称
-    file_path = db.Column(db.String(1000), nullable=False)     # 视频文件路径
+    file_path = db.Column(db.String(1000))                    # 本地视频文件路径
+    source_url = db.Column(db.String(1000))                   # 在线视频URL(直链)
+    source_type = db.Column(db.String(20), default='file')    # file=本地文件 url=在线链接
     push_target_id = db.Column(db.Integer, db.ForeignKey('push_targets.id'), nullable=False)
     loop = db.Column(db.Boolean, default=False)                # 是否循环推流
     status = db.Column(db.String(50), default='stopped')       # stopped/running/error
