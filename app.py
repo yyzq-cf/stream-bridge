@@ -277,7 +277,7 @@ def video_upload():
     if not f.filename:
         return jsonify({'ok': False, 'message': '未选择文件'})
 
-    upload_dir = os.path.join(Config.DATA_DIR, 'uploads')
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'uploads')
     os.makedirs(upload_dir, exist_ok=True)
 
     # 安全文件名
