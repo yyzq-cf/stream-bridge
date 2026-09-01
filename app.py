@@ -690,6 +690,31 @@ def reset_password(uid):
     return jsonify({'ok': True, 'message': f'{user.username} 密码已重置'})
 
 
+@app.route('/users/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """用户修改自己的密码, 需要验证旧密码"""
+    old_pass = request.form.get('old_password', '').strip()
+    new_pass = request.form.get('new_password', '').strip()
+    confirm_pass = request.form.get('confirm_password', '').strip()
+
+    if not old_pass or not new_pass:
+        return jsonify({'ok': False, 'message': '请填写旧密码和新密码'})
+    if not current_user.check_password(old_pass):
+        return jsonify({'ok': False, 'message': '旧密码不正确'})
+    if len(new_pass) < 6:
+        return jsonify({'ok': False, 'message': '新密码至少6位'})
+    if new_pass != confirm_pass:
+        return jsonify({'ok': False, 'message': '两次输入的新密码不一致'})
+    if new_pass == old_pass:
+        return jsonify({'ok': False, 'message': '新密码不能和旧密码相同'})
+
+    current_user.set_password(new_pass)
+    db.session.commit()
+    logger.info(f"用户修改密码: {current_user.username}")
+    return jsonify({'ok': True, 'message': '密码修改成功'})
+
+
 # ─── API: 状态 ───
 
 @app.route('/api/stream-stats/<int:sid>')
