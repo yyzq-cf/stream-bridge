@@ -10,4 +10,5 @@ services:
     environment:
       - ADMIN_USER=admin
       - ADMIN_PASS=admin123
-      - SECRET_KEY=***      - MONITOR_INTERVAL=60
+      - SECRET_KEY=change-this-to-a-random-string
+      - MONITOR_INTERVAL=60
