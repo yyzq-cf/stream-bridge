@@ -40,7 +40,7 @@ def start_video_push(task_id):
         ]
 
         # 循环推流(仅本地文件支持循环)
-        if task.loop and task.source_type == 'file':
+        if task.loop:
             base_cmd += ['-stream_loop', '-1']
 
         base_cmd += [
