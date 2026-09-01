@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    youtube_channel_id = db.Column(db.Integer, db.ForeignKey('youtube_channels.id'), nullable=True)  # 绑定推送到哪个YouTube频道
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -35,6 +36,7 @@ class Streamer(db.Model):
     last_checked = db.Column(db.DateTime)                # 最后检查时间
     last_live_at = db.Column(db.DateTime)                # 最后在线时间
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    youtube_channel_id = db.Column(db.Integer, db.ForeignKey('youtube_channels.id'), nullable=True)  # 绑定推送到哪个YouTube频道
 
     # 关联
     active_streams = db.relationship('ActiveStream', backref='streamer', lazy='dynamic')
@@ -52,6 +54,7 @@ class YouTubeChannel(db.Model):
     token_expiry = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    youtube_channel_id = db.Column(db.Integer, db.ForeignKey('youtube_channels.id'), nullable=True)  # 绑定推送到哪个YouTube频道
 
     # 默认直播配置
     default_title_template = db.Column(db.String(500), default='{streamer_name} 直播转播')

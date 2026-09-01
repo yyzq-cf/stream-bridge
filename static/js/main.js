@@ -298,3 +298,13 @@ function toggleTheme() {
         });
     }
 })();
+
+// ─── 更新博主YouTube频道绑定 ───
+async function updateYouTubeChannel(id, channelId) {
+    const r = await api(`/streamers/${id}/update-youtube`, 'POST', { youtube_channel_id: channelId });
+    if (r.ok) {
+        showToast('✅ YouTube频道绑定已更新', 'success');
+    } else {
+        showToast('❌ 更新失败', 'error');
+    }
+}

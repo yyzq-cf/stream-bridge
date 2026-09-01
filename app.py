@@ -99,7 +99,8 @@ def dashboard():
 @login_required
 def streamers():
     streamers = Streamer.query.order_by(Streamer.created_at.desc()).all()
-    return render_template('streamers.html', streamers=streamers)
+    channels = YouTubeChannel.query.all()
+    return render_template('streamers.html', streamers=streamers, channels=channels)
 
 
 @app.route('/streamers/add', methods=['POST'])
@@ -109,6 +110,8 @@ def add_streamer():
     name = request.form.get('name', '').strip()
     room_id = request.form.get('room_id', '').strip()
     monitor = request.form.get('monitor', 'on') == 'on'
+    yt_channel_id = request.form.get('youtube_channel_id', '').strip()
+    yt_channel_id = int(yt_channel_id) if yt_channel_id else None
 
     if not platform or not name or not room_id:
         flash('平台、名称、房间号不能为空', 'error')
@@ -119,7 +122,8 @@ def add_streamer():
         name=name,
         room_id=room_id,
         url=room_id if room_id.startswith('http') else None,
-        is_monitoring=monitor
+        is_monitoring=monitor,
+        youtube_channel_id=yt_channel_id
     )
     db.session.add(streamer)
     db.session.commit()
@@ -153,6 +157,17 @@ def toggle_monitor(sid):
     action = '开启监控' if streamer.is_monitoring else '关闭监控'
     _log(sid, 'info', 'toggle_monitor', f'{action}: {streamer.name}')
     return jsonify({'ok': True, 'monitoring': streamer.is_monitoring})
+
+
+@app.route('/streamers/<int:sid>/update-youtube', methods=['POST'])
+@login_required
+def update_streamer_youtube(sid):
+    """更新博主绑定的YouTube频道"""
+    streamer = Streamer.query.get_or_404(sid)
+    channel_id = request.form.get('youtube_channel_id', '').strip()
+    streamer.youtube_channel_id = int(channel_id) if channel_id else None
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'YouTube频道已更新'})
 
 
 @app.route('/streamers/<int:sid>/check', methods=['POST'])
@@ -193,10 +208,10 @@ def start_manual_push(sid):
     if not is_live or not stream_url:
         return jsonify({'ok': False, 'message': f'未在直播或获取流失败: {err}'})
 
-    # 获取YouTube频道
-    channel = YouTubeChannel.query.filter_by(is_active=True).first()
+    # 获取博主绑定的YouTube频道
+    channel = YouTubeChannel.query.get(streamer.youtube_channel_id) if streamer.youtube_channel_id else None
     if not channel:
-        return jsonify({'ok': False, 'message': '未配置YouTube频道'})
+        return jsonify({'ok': False, 'message': '该博主未绑定YouTube频道，请先在列表中选择'})
 
     try:
         title = (channel.default_title_template or '{streamer_name} 直播转播').format(

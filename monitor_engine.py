@@ -224,11 +224,11 @@ def _process_streamer(streamer):
 
 def _auto_start_push(streamer, source_url):
     """自动创建YouTube广播并启动推流"""
-    # 获取活跃的YouTube频道
-    channel = YouTubeChannel.query.filter_by(is_active=True).first()
+    # 获取博主绑定的YouTube频道
+    channel = YouTubeChannel.query.get(streamer.youtube_channel_id) if streamer.youtube_channel_id else None
     if not channel:
         _add_log(streamer.id, 'warning', 'no_youtube',
-                 '没有可用的YouTube频道, 跳过自动推流')
+                 '该博主未绑定YouTube频道, 跳过自动推流')
         return
 
     try:
