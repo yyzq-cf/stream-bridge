@@ -23,7 +23,7 @@ def check_kuaishou_live(url):
     """
     try:
         # 用curl获取页面(快手拒绝Python urllib)
-        cmd = ['curl', '-s', '-L', url] + KUAISHOU_HEADERS
+        cmd = ['curl', '-s', '--compressed', '-L', url] + KUAISHOU_HEADERS
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
 
         if result.returncode != 0:
