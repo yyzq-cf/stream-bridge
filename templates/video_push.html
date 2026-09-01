@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}视频推流 - StreamBridge{% endblock %}
+{% block content %}
+<h1 class="page-title">视频文件推流</h1>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>添加推流任务</h2>
+    </div>
+    <div class="panel-body">
+        <form method="POST" action="{{ url_for('video_push_add') }}" enctype="multipart/form-data" id="upload-form">
+            <div class="form-group">
+                <label>任务名称</label>
+                <input type="text" name="name" class="form-control" placeholder="如: 测试视频推流" required>
+            </div>
+            <div class="form-group">
+                <label>上传视频文件</label>
+                <input type="file" name="file" id="file-input" accept="video/*" required style="width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+                <div id="upload-status" style="margin-top:8px;font-size:13px;"></div>
+                <input type="hidden" name="file_path" id="file-path">
+            </div>
+            <div class="form-group">
+                <label>推流目标</label>
+                <select name="push_target_id" class="form-control" required>
+                    <option value="">请选择</option>
+                    {% for t in targets %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label"><input type="checkbox" name="loop"> 循环推流(视频结束后自动重头开始)</label>
+            </div>
+            <button type="submit" class="btn btn-primary" id="submit-btn" disabled>添加并准备推流</button>
+        </form>
+        {% if not targets %}
+        <p style="margin-top:10px;color:var(--text-dim);font-size:13px;">⚠️ 还没有推流目标，请先到 <a href="{{ url_for('targets') }}">推流目标页面</a> 添加</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>推流任务列表 ({{ tasks|length }})</h2>
+    </div>
+    <div class="panel-body">
+        {% if tasks %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th><th>名称</th><th>视频文件</th><th>推流目标</th>
+                    <th>循环</th><th>状态</th><th>时长</th><th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tasks %}
+                <tr id="vp-{{ t.id }}" data-id="{{ t.id }}">
+                    <td>{{ t.id }}</td>
+                    <td>{{ t.name }}</td>
+                    <td style="font-size:12px;word-break:break-all;">{{ t.file_path|replace('/app/data/uploads/', '') }}</td>
+                    <td>{{ t.push_target.name if t.push_target else '-' }}</td>
+                    <td>{{ '✅' if t.loop else '-' }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'success' if t.status == 'running' else ('danger' if t.status == 'error' else 'secondary') }}" id="vp-status-{{ t.id }}">
+                            {{ '推流中' if t.status == 'running' else ('错误' if t.status == 'error' else '已停止') }}
+                        </span>
+                    </td>
+                    <td id="vp-uptime-{{ t.id }}">-</td>
+                    <td class="action-buttons">
+                        {% if t.status == 'running' %}
+                        <button class="btn btn-sm btn-warning" onclick="stopVP({{ t.id }})">停止</button>
+                        {% else %}
+                        <button class="btn btn-sm btn-success" onclick="startVP({{ t.id }})">开始推流</button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-danger" onclick="deleteVP({{ t.id }}, '{{ t.name }}')">删除</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">还没有推流任务</div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// 文件上传
+document.getElementById('file-input').addEventListener('change', async function() {
+    const file = this.files[0];
+    if (!file) return;
+    
+    const statusEl = document.getElementById('upload-status');
+    const submitBtn = document.getElementById('submit-btn');
+    statusEl.textContent = '⏳ 上传中... ' + file.name;
+    statusEl.style.color = 'var(--text-dim)';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const resp = await fetch('/video-push/upload', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.ok) {
+            statusEl.textContent = '✅ ' + data.message;
+            statusEl.style.color = 'var(--success)';
+            document.getElementById('file-path').value = data.filepath;
+            submitBtn.disabled = false;
+        } else {
+            statusEl.textContent = '❌ ' + data.message;
+            statusEl.style.color = 'var(--danger)';
+        }
+    } catch(e) {
+        statusEl.textContent = '❌ 上传失败: ' + e.message;
+        statusEl.style.color = 'var(--danger)';
+    }
+});
+
+// 启动推流
+async function startVP(id) {
+    showToast('正在启动推流...');
+    const r = await api(`/video-push/${id}/start`, 'POST');
+    if (r.ok) {
+        showToast('✅ ' + r.message, 'success');
+        setTimeout(() => location.reload(), 2000);
+    } else {
+        showToast('❌ ' + (r.message || '启动失败'), 'error');
+    }
+}
+
+// 停止推流
+async function stopVP(id) {
+    const r = await api(`/video-push/${id}/stop`, 'POST');
+    if (r.ok) {
+        showToast('✅ 推流已停止', 'success');
+        setTimeout(() => location.reload(), 2000);
+    } else {
+        showToast('❌ ' + (r.message || '停止失败'), 'error');
+    }
+}
+
+// 删除任务
+async function deleteVP(id, name) {
+    if (!confirm(`确认删除任务 "${name}"?`)) return;
+    const r = await api(`/video-push/${id}/delete`, 'POST');
+    if (r.ok) {
+        showToast('✅ ' + r.message, 'success');
+        setTimeout(() => location.reload(), 1500);
+    } else {
+        showToast('❌ ' + (r.message || '删除失败'), 'error');
+    }
+}
+
+// 刷新运行中的任务状态
+async function refreshVP() {
+    const rows = document.querySelectorAll('[id^="vp-"][data-id]');
+    for (const row of rows) {
+        const id = row.dataset.id;
+        try {
+            const resp = await fetch(`/api/video-push/stats/${id}`);
+            const data = await resp.json();
+            if (data.ok) {
+                const upEl = document.getElementById(`vp-uptime-${id}`);
+                if (upEl) upEl.textContent = data.uptime || '-';
+            }
+        } catch(e) {}
+    }
+}
+setInterval(refreshVP, 3000);
+if (document.querySelectorAll('[id^="vp-"][data-id]').length > 0) {
+    refreshVP();
+}
+</script>
+{% endblock %}

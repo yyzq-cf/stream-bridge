@@ -13,7 +13,7 @@ from flask_login import (LoginManager, login_user, logout_user,
                          login_required, current_user)
 
 from config import Config
-from models import db, User, Streamer, PushTarget, ActiveStream, StreamLog, Setting
+from models import db, User, Streamer, PushTarget, ActiveStream, StreamLog, Setting, VideoPush
 from monitor_engine import start_monitor, stop_monitor
 import stream_engine
 
@@ -257,6 +257,128 @@ def stop_manual_push(sid):
 
 
 # ─── 推流目标管理(替代YouTube OAuth) ───
+
+@app.route('/video-push')
+@login_required
+def video_push():
+    tasks = VideoPush.query.order_by(VideoPush.created_at.desc()).all()
+    targets = PushTarget.query.all()
+    return render_template('video_push.html', tasks=tasks, targets=targets)
+
+
+@app.route('/video-push/upload', methods=['POST'])
+@login_required
+def video_upload():
+    """上传视频文件"""
+    import os
+    if 'file' not in request.files:
+        return jsonify({'ok': False, 'message': '未选择文件'})
+    f = request.files['file']
+    if not f.filename:
+        return jsonify({'ok': False, 'message': '未选择文件'})
+
+    upload_dir = os.path.join(Config.DATA_DIR, 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # 安全文件名
+    import uuid
+    ext = os.path.splitext(f.filename)[1] or '.mp4'
+    safe_name = f'{uuid.uuid4().hex[:12]}{ext}'
+    filepath = os.path.join(upload_dir, safe_name)
+    f.save(filepath)
+
+    return jsonify({
+        'ok': True,
+        'filename': f.filename,
+        'filepath': filepath,
+        'message': f'文件 {f.filename} 上传成功'
+    })
+
+
+@app.route('/video-push/add', methods=['POST'])
+@login_required
+def video_push_add():
+    """添加视频推流任务"""
+    name = request.form.get('name', '').strip()
+    file_path = request.form.get('file_path', '').strip()
+    target_id = request.form.get('push_target_id', '').strip()
+    loop = request.form.get('loop') == 'on'
+
+    if not name or not file_path or not target_id:
+        return jsonify({'ok': False, 'message': '名称、文件、推流目标不能为空'})
+
+    import os
+    if not os.path.exists(file_path):
+        return jsonify({'ok': False, 'message': '视频文件不存在'})
+
+    task = VideoPush(
+        name=name,
+        file_path=file_path,
+        push_target_id=int(target_id),
+        loop=loop
+    )
+    db.session.add(task)
+    db.session.commit()
+    flash(f'推流任务 {name} 已添加', 'success')
+    return redirect(url_for('video_push'))
+
+
+@app.route('/video-push/<int:tid>/delete', methods=['POST'])
+@login_required
+def video_push_delete(tid):
+    task = VideoPush.query.get_or_404(tid)
+    # 先停止
+    if task.status == 'running':
+        from video_engine import stop_video_push
+        stop_video_push(tid)
+    db.session.delete(task)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'任务 {task.name} 已删除'})
+
+
+@app.route('/video-push/<int:tid>/start', methods=['POST'])
+@login_required
+def video_push_start(tid):
+    """启动视频推流"""
+    from video_engine import start_video_push
+    ok, msg = start_video_push(tid)
+    return jsonify({'ok': ok, 'message': msg})
+
+
+@app.route('/video-push/<int:tid>/stop', methods=['POST'])
+@login_required
+def video_push_stop(tid):
+    """停止视频推流"""
+    from video_engine import stop_video_push
+    stop_video_push(tid)
+    return jsonify({'ok': True, 'message': '推流已停止'})
+
+
+@app.route('/api/video-push/stats/<int:tid>')
+@login_required
+def video_push_stats(tid):
+    """获取视频推流状态"""
+    task = VideoPush.query.get_or_404(tid)
+    import os, json
+    if task.status != 'running' or not task.ffmpeg_pid:
+        return jsonify({'ok': False})
+    if not os.path.exists(f'/proc/{task.ffmpeg_pid}'):
+        task.status = 'error'
+        task.error_message = 'FFmpeg进程已退出'
+        db.session.commit()
+        return jsonify({'ok': False})
+
+    # 运行时长
+    uptime = '-'
+    if task.started_at:
+        from datetime import datetime
+        delta = datetime.utcnow() - task.started_at
+        h, rem = divmod(int(delta.total_seconds()), 3600)
+        m, s = divmod(rem, 60)
+        uptime = f'{h:02d}:{m:02d}:{s:02d}'
+
+    return jsonify({'ok': True, 'status': task.status, 'uptime': uptime, 'pid': task.ffmpeg_pid})
+
 
 @app.route('/settings')
 @login_required

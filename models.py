@@ -94,3 +94,21 @@ class Setting(db.Model):
     __tablename__ = 'settings'
     key = db.Column(db.String(100), primary_key=True)
     value = db.Column(db.Text)
+
+
+class VideoPush(db.Model):
+    """视频文件推流记录"""
+    __tablename__ = 'video_pushes'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)          # 推流任务名称
+    file_path = db.Column(db.String(1000), nullable=False)     # 视频文件路径
+    push_target_id = db.Column(db.Integer, db.ForeignKey('push_targets.id'), nullable=False)
+    loop = db.Column(db.Boolean, default=False)                # 是否循环推流
+    status = db.Column(db.String(50), default='stopped')       # stopped/running/error
+    ffmpeg_pid = db.Column(db.Integer)
+    started_at = db.Column(db.DateTime)
+    stopped_at = db.Column(db.DateTime)
+    error_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    push_target = db.relationship('PushTarget', backref='video_pushes')
