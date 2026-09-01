@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - StreamBridge</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-page">
+    <div class="login-card">
+        <div class="login-header">
+            <span class="login-logo">🎥</span>
+            <h1>StreamBridge</h1>
+            <p>直播转推YouTube管理平台</p>
+        </div>
+        <form method="POST" class="login-form">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" name="username" required autofocus placeholder="admin">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" name="password" required placeholder="••••••">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">登录</button>
+        </form>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  streambridge:
+    build: .
+    container_name: streambridge
+    restart: unless-stopped
+    ports:
+      - "5300:5300"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - ADMIN_USER=admin
+      - ADMIN_PASS=admin123
+      - SECRET_KEY=change-this-to-random-string
+      - MONITOR_INTERVAL=60
+    # 如果需要转码, 取消注释
+    # - VIDEO_CODEC=libx264
+    # - AUDIO_CODEC=aac
+    # - AUDIO_BITRATE=128k

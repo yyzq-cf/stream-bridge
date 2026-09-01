@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}仪表盘 - StreamBridge{% endblock %}
+{% block content %}
+<h1 class="page-title">仪表盘</h1>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📡</div>
+        <div class="stat-value">{{ streamers|length }}</div>
+        <div class="stat-label">博主总数</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🔴</div>
+        <div class="stat-value" id="live-count">{{ streamers|selectattr('is_live')|list|length }}</div>
+        <div class="stat-label">正在直播</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📺</div>
+        <div class="stat-value">{{ active_streams|length }}</div>
+        <div class="stat-label">推流中</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🔑</div>
+        <div class="stat-value">{{ channels|length }}</div>
+        <div class="stat-label">YouTube频道</div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="panel">
+        <div class="panel-header">
+            <h2>活跃推流</h2>
+        </div>
+        <div class="panel-body">
+            {% if active_streams %}
+            <table class="table">
+                <thead>
+                    <tr><th>博主</th><th>标题</th><th>状态</th><th>开始时间</th><th>操作</th></tr>
+                </thead>
+                <tbody>
+                    {% for s in active_streams %}
+                    <tr>
+                        <td>{{ s.streamer.name if s.streamer else '-' }}</td>
+                        <td>{{ s.broadcast_title }}</td>
+                        <td><span class="badge badge-{{ 'success' if s.status == 'running' else 'warning' }}">{{ s.status }}</span></td>
+                        <td>{{ s.started_at.strftime('%H:%M:%S') if s.started_at else '-' }}</td>
+                        <td><button class="btn btn-sm btn-danger" onclick="stopPush({{ s.streamer_id }})">停止</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">暂无活跃推流</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>最近日志</h2>
+            <a href="{{ url_for('logs') }}" class="btn btn-sm">查看全部</a>
+        </div>
+        <div class="panel-body" id="recent-logs">
+            {% for log in recent_logs %}
+            <div class="log-item log-{{ log.level }}">
+                <span class="log-time">{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}</span>
+                <span class="log-level">{{ log.level|upper }}</span>
+                <span class="log-msg">{{ log.message }}</span>
+            </div>
+            {% else %}
+            <div class="empty">暂无日志</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}博主管理 - StreamBridge{% endblock %}
+{% block content %}
+<h1 class="page-title">博主管理</h1>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>添加博主</h2>
+    </div>
+    <div class="panel-body">
+        <form method="POST" action="{{ url_for('add_streamer') }}" class="form-inline">
+            <select name="platform" class="form-control" required>
+                {% for key, label in config.SUPPORTED_PLATFORMS.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="name" class="form-control" placeholder="博主名称/备注" required>
+            <input type="text" name="room_id" class="form-control" placeholder="房间号或完整URL" required style="flex:2">
+            <label class="checkbox-label">
+                <input type="checkbox" name="monitor" checked> 开启监控
+            </label>
+            <button type="submit" class="btn btn-primary">添加</button>
+        </form>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>博主列表 ({{ streamers|length }})</h2>
+    </div>
+    <div class="panel-body">
+        {% if streamers %}
+        <table class="table" id="streamers-table">
+            <thead>
+                <tr>
+                    <th>ID</th><th>平台</th><th>名称</th><th>房间号</th>
+                    <th>直播中</th><th>监控</th><th>最后检查</th><th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in streamers %}
+                <tr id="streamer-{{ s.id }}" data-id="{{ s.id }}">
+                    <td>{{ s.id }}</td>
+                    <td><span class="badge badge-platform">{{ config.SUPPORTED_PLATFORMS.get(s.platform, s.platform) }}</span></td>
+                    <td>{{ s.name }}</td>
+                    <td class="room-id" title="{{ s.room_id }}">{{ s.room_id[:30] }}{% if s.room_id|length > 30 %}...{% endif %}</td>
+                    <td>
+                        <span class="live-dot {{ 'live' if s.is_live else '' }}"></span>
+                        <span class="live-text">{{ '直播中' if s.is_live else '未直播' }}</span>
+                    </td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox" {{ 'checked' if s.is_monitoring else '' }} onchange="toggleMonitor({{ s.id }})">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td>{{ s.last_checked.strftime('%m-%d %H:%M') if s.last_checked else '-' }}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-info" onclick="checkNow({{ s.id }})">检测</button>
+                        <button class="btn btn-sm btn-success" onclick="startPush({{ s.id }})" {{ '' if s.is_live else 'disabled title="未在直播"' }}>推流</button>
+                        <button class="btn btn-sm btn-warning" onclick="stopPush({{ s.id }})">停止</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteStreamer({{ s.id }}, '{{ s.name }}')">删除</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">还没有添加博主，使用上方表单添加</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

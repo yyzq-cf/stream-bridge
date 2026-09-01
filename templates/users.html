@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}用户管理 - StreamBridge{% endblock %}
+{% block content %}
+<h1 class="page-title">用户管理</h1>
+
+<div class="panel">
+    <div class="panel-header"><h2>添加用户</h2></div>
+    <div class="panel-body">
+        <form id="add-user-form" class="form-inline">
+            <input type="text" name="username" class="form-control" placeholder="用户名" required>
+            <input type="password" name="password" class="form-control" placeholder="密码 (至少6位)" required>
+            <label class="checkbox-label"><input type="checkbox" name="is_admin"> 管理员</label>
+            <button type="submit" class="btn btn-primary">添加</button>
+        </form>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header"><h2>用户列表</h2></div>
+    <div class="panel-body">
+        <table class="table">
+            <thead>
+                <tr><th>ID</th><th>用户名</th><th>角色</th><th>创建时间</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.username }}</td>
+                    <td><span class="badge badge-{{ 'primary' if u.is_admin else 'secondary' }}">{{ '管理员' if u.is_admin else '普通用户' }}</span></td>
+                    <td>{{ u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '-' }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="resetPass({{ u.id }}, '{{ u.username }}')">重置密码</button>
+                        {% if u.id != current_user.id %}
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser({{ u.id }}, '{{ u.username }}')">删除</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="reset-pass-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>重置密码 - <span id="reset-username"></span></h3>
+        <input type="password" id="reset-password-input" class="form-control" placeholder="新密码" style="margin:12px 0;">
+        <div class="modal-actions">
+            <button class="btn" onclick="closeModal()">取消</button>
+            <button class="btn btn-primary" onclick="confirmResetPass()">确认</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}YouTube配置 - StreamBridge{% endblock %}
+{% block content %}
+<h1 class="page-title">YouTube频道管理</h1>
+
+{% if not has_secret %}
+<div class="panel panel-warning">
+    <div class="panel-header"><h2>⚠️ 需要OAuth凭据</h2></div>
+    <div class="panel-body">
+        <p>请将Google Cloud Console下载的 <code>client_secret.json</code> 文件放到 <code>data/</code> 目录下。</p>
+        <p>获取步骤：</p>
+        <ol>
+            <li>访问 <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+            <li>创建项目 → 启用 YouTube Data API v3</li>
+            <li>创建 OAuth 2.0 客户端 ID (类型选"桌面应用")</li>
+            <li>下载JSON文件, 重命名为 <code>client_secret.json</code></li>
+            <li>放入 <code>data/client_secret.json</code></li>
+        </ol>
+    </div>
+</div>
+{% endif %}
+
+<div class="panel">
+    <div class="panel-header"><h2>添加YouTube频道</h2></div>
+    <div class="panel-body">
+        <div id="yt-auth-section">
+            <button class="btn btn-primary" onclick="startYouTubeAuth()" {{ '' if has_secret else 'disabled' }}>
+                1. 获取授权链接
+            </button>
+            <div id="auth-url-box" style="display:none; margin-top:12px;">
+                <p>点击下方链接在新窗口打开, 授权后把代码粘贴回来:</p>
+                <a id="auth-url-link" href="#" target="_blank" class="auth-link">打开Google授权页面</a>
+            </div>
+            <div id="auth-code-box" style="display:none; margin-top:12px;">
+                <input type="text" id="auth-code" class="form-control" placeholder="粘贴授权码" style="flex:3">
+                <button class="btn btn-success" onclick="completeYouTubeAuth()">2. 完成授权</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header"><h2>已配置频道 ({{ channels|length }})</h2></div>
+    <div class="panel-body">
+        {% if channels %}
+        <table class="table">
+            <thead>
+                <tr><th>频道名</th><th>频道ID</th><th>状态</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+                {% for c in channels %}
+                <tr>
+                    <td>{{ c.channel_title }}</td>
+                    <td><code>{{ c.channel_id[:20] }}...</code></td>
+                    <td><span class="badge badge-{{ 'success' if c.is_active else 'secondary' }}">{{ '活跃' if c.is_active else '停用' }}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="toggleChannel({{ c.id }})">{{ '停用' if c.is_active else '启用' }}</button>
+                        <form method="POST" action="{{ url_for('delete_youtube_channel', cid=c.id) }}" style="display:inline" onsubmit="return confirm('确定删除?')">
+                            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div style="margin-top:20px;">
+            <h3>默认直播配置</h3>
+            {% for c in channels %}
+            <form method="POST" action="{{ url_for('update_youtube_channel', cid=c.id) }}" class="config-form">
+                <h4>{{ c.channel_title }}</h4>
+                <div class="form-group">
+                    <label>直播标题模板 <code>{streamer_name}</code> = 博主名</label>
+                    <input type="text" name="title_template" class="form-control" value="{{ c.default_title_template }}">
+                </div>
+                <div class="form-group">
+                    <label>直播描述</label>
+                    <textarea name="description" class="form-control" rows="2">{{ c.default_description }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>隐私状态</label>
+                    <select name="privacy" class="form-control">
+                        <option value="public" {{ 'selected' if c.default_privacy == 'public' else '' }}>公开</option>
+                        <option value="unlisted" {{ 'selected' if c.default_privacy == 'unlisted' else '' }}>不公开</option>
+                        <option value="private" {{ 'selected' if c.default_privacy == 'private' else '' }}>私密</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">保存配置</button>
+            </form>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">还没有配置YouTube频道</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
