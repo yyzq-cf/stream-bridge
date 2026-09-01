@@ -31,6 +31,11 @@ def check_streamer_live(streamer):
         from platforms.douyin import check_douyin_live
         return check_douyin_live(url)
 
+    # 快手: 用专用检测器(curl获取页面提取FLV流)
+    if streamer.platform == 'kuaishou':
+        from platforms.kuaishou import check_kuaishou_live
+        return check_kuaishou_live(url)
+
     # 其他平台: 用yt-dlp
     return _check_with_ytdlp(url)
 

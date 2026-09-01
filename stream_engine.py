@@ -48,7 +48,7 @@ def start_ffmpeg_push(active_stream_id):
             headers = [
                 '-headers', 'Referer: https://live.douyin.com/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n',
             ]
-        elif 'kuaishou' in source_url or 'ksapisrv' in source_url:
+        elif 'yximgs' in source_url or 'kuaishou' in source_url or 'gifshow' in source_url:
             headers = [
                 '-headers', 'Referer: https://live.kuaishou.com/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n',
             ]
