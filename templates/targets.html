@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}推流目标 - StreamBridge{% endblock %}
+{% block content %}
+<h1 class="page-title">推流目标管理</h1>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>添加推流目标</h2>
+    </div>
+    <div class="panel-body">
+        <form method="POST" action="{{ url_for('add_target') }}" class="form-inline">
+            <input type="text" name="name" class="form-control" placeholder="目标名称 (如: YouTube主频道)" required>
+            <input type="text" name="rtmp_url" class="form-control" placeholder="RTMP地址" value="{{ yt_rtmp }}" required style="flex:2">
+            <input type="text" name="stream_key" class="form-control" placeholder="流密钥/直播码" required style="flex:2">
+            <button type="submit" class="btn btn-primary">添加</button>
+        </form>
+        <p style="margin-top:10px;color:var(--text-dim);font-size:12px;">
+            YouTube推流地址固定为 <code>{{ yt_rtmp }}</code>，只需填入YouTube Studio后台获取的流密钥<br>
+            也支持其他平台RTMP地址，如B站 <code>rtmp://live-push.bilivideo.com/live-bvc</code>
+        </p>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>目标列表 ({{ targets|length }})</h2>
+    </div>
+    <div class="panel-body">
+        {% if targets %}
+        <table class="table">
+            <thead>
+                <tr><th>ID</th><th>名称</th><th>RTMP地址</th><th>流密钥</th><th>状态</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+                {% for t in targets %}
+                <tr>
+                    <td>{{ t.id }}</td>
+                    <td>{{ t.name }}</td>
+                    <td><code style="font-size:12px;word-break:break-all;">{{ t.rtmp_url }}</code></td>
+                    <td><code style="font-size:12px;">{{ t.stream_key[:8] }}••••••</code></td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox" {{ 'checked' if t.is_active else '' }} disabled>
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-info" onclick="editTarget({{ t.id }}, '{{ t.name }}', '{{ t.rtmp_url }}')">编辑</button>
+                        <form method="POST" action="{{ url_for('delete_target', tid=t.id) }}" style="display:inline" onsubmit="return confirm('确定删除?')">
+                            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">还没有推流目标，使用上方表单添加</div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="edit-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>编辑推流目标</h3>
+        <form method="POST" id="edit-form" style="margin-top:16px;">
+            <div class="form-group">
+                <label>名称</label>
+                <input type="text" name="name" id="edit-name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>RTMP地址</label>
+                <input type="text" name="rtmp_url" id="edit-rtmp" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>流密钥 (留空不改)</label>
+                <input type="text" name="stream_key" id="edit-key" class="form-control" placeholder="••••••">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label"><input type="checkbox" name="is_active" id="edit-active" checked> 启用</label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeEditModal()">取消</button>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -9,7 +9,7 @@ import time
 import re
 from datetime import datetime
 
-from models import db, Streamer, ActiveStream, StreamLog, YouTubeChannel
+from models import db, Streamer, ActiveStream, StreamLog, PushTarget
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -223,35 +223,19 @@ def _process_streamer(streamer):
 
 
 def _auto_start_push(streamer, source_url):
-    """自动创建YouTube广播并启动推流"""
-    # 获取博主绑定的YouTube频道
-    channel = YouTubeChannel.query.get(streamer.youtube_channel_id) if streamer.youtube_channel_id else None
-    if not channel:
-        _add_log(streamer.id, 'warning', 'no_youtube',
-                 '该博主未绑定YouTube频道, 跳过自动推流')
+    """自动启动推流到绑定的推流目标"""
+    target = PushTarget.query.get(streamer.push_target_id) if streamer.push_target_id else None
+    if not target:
+        _add_log(streamer.id, 'warning', 'no_target',
+                 '该博主未绑定推流目标, 跳过自动推流')
         return
 
     try:
-        from youtube_engine import create_broadcast_and_get_rtmp
-        title = (channel.default_title_template or '').format(
-            streamer_name=streamer.name
-        )
-        rtmp_url, stream_key, broadcast_id, stream_id = \
-            create_broadcast_and_get_rtmp(
-                channel, title,
-                channel.default_description or 'StreamBridge转播',
-                channel.default_privacy or 'public'
-            )
-
-        # 创建ActiveStream记录
         active = ActiveStream(
             streamer_id=streamer.id,
-            youtube_channel_id=channel.id,
-            broadcast_id=broadcast_id,
-            broadcast_title=title,
-            stream_id=stream_id,
-            rtmp_url=rtmp_url,
-            stream_key=stream_key,
+            push_target_id=target.id,
+            rtmp_url=target.rtmp_url,
+            stream_key=target.stream_key,
             source_url=source_url,
             status='starting'
         )
@@ -261,7 +245,7 @@ def _auto_start_push(streamer, source_url):
         from stream_engine import start_ffmpeg_push
         start_ffmpeg_push(active.id)
         _add_log(streamer.id, 'success', 'push_started',
-                 f'已自动推流到YouTube: {title}')
+                 f'已自动推流 → {target.name}')
 
     except Exception as e:
         _add_log(streamer.id, 'error', 'auto_push_fail',

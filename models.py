@@ -14,7 +14,6 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    youtube_channel_id = db.Column(db.Integer, db.ForeignKey('youtube_channels.id'), nullable=True)  # 绑定推送到哪个YouTube频道
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -24,71 +23,59 @@ class User(UserMixin, db.Model):
 
 
 class Streamer(db.Model):
-    """直播博主表 - 手动添加的各平台直播源"""
+    """直播博主表"""
     __tablename__ = 'streamers'
     id = db.Column(db.Integer, primary_key=True)
-    platform = db.Column(db.String(50), nullable=False)  # douyin/kuaishou/bilibili/...
-    name = db.Column(db.String(200), nullable=False)     # 博主名称/备注
-    room_id = db.Column(db.String(500), nullable=False)  # 房间号或完整URL
-    url = db.Column(db.String(1000))                     # 标准化后的URL
-    is_monitoring = db.Column(db.Boolean, default=True)  # 是否监控中
-    is_live = db.Column(db.Boolean, default=False)       # 当前是否在直播
-    last_checked = db.Column(db.DateTime)                # 最后检查时间
-    last_live_at = db.Column(db.DateTime)                # 最后在线时间
+    platform = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    room_id = db.Column(db.String(500), nullable=False)
+    url = db.Column(db.String(1000))
+    is_monitoring = db.Column(db.Boolean, default=True)
+    is_live = db.Column(db.Boolean, default=False)
+    last_checked = db.Column(db.DateTime)
+    last_live_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    youtube_channel_id = db.Column(db.Integer, db.ForeignKey('youtube_channels.id'), nullable=True)  # 绑定推送到哪个YouTube频道
+    # 绑定推流目标
+    push_target_id = db.Column(db.Integer, db.ForeignKey('push_targets.id'), nullable=True)
 
-    # 关联
     active_streams = db.relationship('ActiveStream', backref='streamer', lazy='dynamic')
     logs = db.relationship('StreamLog', backref='streamer', lazy='dynamic')
+    push_target = db.relationship('PushTarget', backref='streamers')
 
 
-class YouTubeChannel(db.Model):
-    """YouTube频道凭据(OAuth2)"""
-    __tablename__ = 'youtube_channels'
+class PushTarget(db.Model):
+    """推流目标 - RTMP地址+流密钥"""
+    __tablename__ = 'push_targets'
     id = db.Column(db.Integer, primary_key=True)
-    channel_id = db.Column(db.String(100))
-    channel_title = db.Column(db.String(200))
-    access_token = db.Column(db.Text)
-    refresh_token = db.Column(db.Text)
-    token_expiry = db.Column(db.DateTime)
+    name = db.Column(db.String(200), nullable=False)          # 目标名称, 如"YouTube主频道"
+    rtmp_url = db.Column(db.String(500), nullable=False)      # RTMP地址, 如 rtmp://a.rtmp.youtube.com/live2
+    stream_key = db.Column(db.String(500), nullable=False)    # 流密钥
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    youtube_channel_id = db.Column(db.Integer, db.ForeignKey('youtube_channels.id'), nullable=True)  # 绑定推送到哪个YouTube频道
 
-    # 默认直播配置
-    default_title_template = db.Column(db.String(500), default='{streamer_name} 直播转播')
-    default_description = db.Column(db.Text, default='由 StreamBridge 自动转播')
-    default_privacy = db.Column(db.String(20), default='public')  # public/unlisted/private
-    default_category_id = db.Column(db.String(20), default='22')  # 22=People & Blogs
+    # 直播标题模板(可选, 部分平台支持)
+    title_template = db.Column(db.String(500), default='{streamer_name} 直播转播')
 
 
 class ActiveStream(db.Model):
-    """活跃推流记录 - 正在推到YouTube的流"""
+    """活跃推流记录"""
     __tablename__ = 'active_streams'
     id = db.Column(db.Integer, primary_key=True)
     streamer_id = db.Column(db.Integer, db.ForeignKey('streamers.id'), nullable=False)
-    youtube_channel_id = db.Column(db.Integer, db.ForeignKey('youtube_channels.id'))
-    
-    # YouTube广播信息
-    broadcast_id = db.Column(db.String(100))
-    broadcast_title = db.Column(db.String(500))
-    stream_id = db.Column(db.String(100))
+    push_target_id = db.Column(db.Integer, db.ForeignKey('push_targets.id'), nullable=True)
+
     rtmp_url = db.Column(db.String(500))
     stream_key = db.Column(db.String(500))
-    
-    # FFmpeg进程
     ffmpeg_pid = db.Column(db.Integer)
-    
-    # 状态
+
     status = db.Column(db.String(50), default='starting')  # starting/running/stopping/error
-    source_url = db.Column(db.String(1000))  # 实际拉流地址
-    
+    source_url = db.Column(db.String(1000))
+
     started_at = db.Column(db.DateTime, default=datetime.utcnow)
     stopped_at = db.Column(db.DateTime)
     error_message = db.Column(db.Text)
-    
-    youtube_channel = db.relationship('YouTubeChannel', backref='active_streams')
+
+    push_target = db.relationship('PushTarget', backref='active_streams')
 
 
 class StreamLog(db.Model):
@@ -96,7 +83,7 @@ class StreamLog(db.Model):
     __tablename__ = 'logs'
     id = db.Column(db.Integer, primary_key=True)
     streamer_id = db.Column(db.Integer, db.ForeignKey('streamers.id'), nullable=True)
-    level = db.Column(db.String(20), default='info')  # info/warning/error/success
+    level = db.Column(db.String(20), default='info')
     action = db.Column(db.String(100))
     message = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)

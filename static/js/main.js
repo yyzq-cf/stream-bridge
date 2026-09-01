@@ -299,12 +299,29 @@ function toggleTheme() {
     }
 })();
 
-// ─── 更新博主YouTube频道绑定 ───
-async function updateYouTubeChannel(id, channelId) {
-    const r = await api(`/streamers/${id}/update-youtube`, 'POST', { youtube_channel_id: channelId });
+// ─── 更新博主推流目标绑定 ───
+async function updateTarget(id, targetId) {
+    const r = await api(`/streamers/${id}/update-target`, 'POST', { push_target_id: targetId });
     if (r.ok) {
-        showToast('✅ YouTube频道绑定已更新', 'success');
+        showToast('✅ 推流目标已更新', 'success');
     } else {
         showToast('❌ 更新失败', 'error');
     }
+}
+
+// ─── 编辑推流目标 ───
+let editTargetUrl = '';
+let editTargetId = null;
+
+function editTarget(id, name, rtmpUrl) {
+    editTargetId = id;
+    document.getElementById('edit-name').value = name;
+    document.getElementById('edit-rtmp').value = rtmpUrl;
+    document.getElementById('edit-key').value = '';
+    document.getElementById('edit-form').action = `/targets/${id}/update`;
+    document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
 }

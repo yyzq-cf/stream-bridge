@@ -1,20 +1,21 @@
 """
 StreamBridge 主应用
-Flask Web界面 + 用户管理 + 直播监控推流
+Flask Web界面 + 用户管理 + 直播监控推流(RTMP直推)
 """
 import os
 import logging
 from datetime import datetime
 
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, session
+from flask import (Flask, render_template, redirect, url_for, request,
+                   flash, jsonify, session)
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import (LoginManager, login_user, logout_user,
+                         login_required, current_user)
 
 from config import Config
-from models import db, User, Streamer, YouTubeChannel, ActiveStream, StreamLog
+from models import db, User, Streamer, PushTarget, ActiveStream, StreamLog
 from monitor_engine import start_monitor, stop_monitor
 import stream_engine
-import youtube_engine
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config.from_object(Config)
-
 db.init_app(app)
 
 login_manager = LoginManager()
@@ -82,14 +82,14 @@ def dashboard():
     active_streams = ActiveStream.query.filter(
         ActiveStream.status.in_(['running', 'starting'])
     ).all()
-    channels = YouTubeChannel.query.all()
+    targets = PushTarget.query.all()
     recent_logs = StreamLog.query.order_by(
         StreamLog.timestamp.desc()
     ).limit(20).all()
     return render_template('dashboard.html',
                            streamers=streamers,
                            active_streams=active_streams,
-                           channels=channels,
+                           targets=targets,
                            recent_logs=recent_logs)
 
 
@@ -99,8 +99,8 @@ def dashboard():
 @login_required
 def streamers():
     streamers = Streamer.query.order_by(Streamer.created_at.desc()).all()
-    channels = YouTubeChannel.query.all()
-    return render_template('streamers.html', streamers=streamers, channels=channels)
+    targets = PushTarget.query.all()
+    return render_template('streamers.html', streamers=streamers, targets=targets)
 
 
 @app.route('/streamers/add', methods=['POST'])
@@ -110,8 +110,8 @@ def add_streamer():
     name = request.form.get('name', '').strip()
     room_id = request.form.get('room_id', '').strip()
     monitor = request.form.get('monitor', 'on') == 'on'
-    yt_channel_id = request.form.get('youtube_channel_id', '').strip()
-    yt_channel_id = int(yt_channel_id) if yt_channel_id else None
+    target_id = request.form.get('push_target_id', '').strip()
+    target_id = int(target_id) if target_id else None
 
     if not platform or not name or not room_id:
         flash('平台、名称、房间号不能为空', 'error')
@@ -123,7 +123,7 @@ def add_streamer():
         room_id=room_id,
         url=room_id if room_id.startswith('http') else None,
         is_monitoring=monitor,
-        youtube_channel_id=yt_channel_id
+        push_target_id=target_id
     )
     db.session.add(streamer)
     db.session.commit()
@@ -136,7 +136,6 @@ def add_streamer():
 @login_required
 def delete_streamer(sid):
     streamer = Streamer.query.get_or_404(sid)
-    # 先停止活跃推流
     active = ActiveStream.query.filter_by(
         streamer_id=sid, status='running'
     ).first()
@@ -159,21 +158,20 @@ def toggle_monitor(sid):
     return jsonify({'ok': True, 'monitoring': streamer.is_monitoring})
 
 
-@app.route('/streamers/<int:sid>/update-youtube', methods=['POST'])
+@app.route('/streamers/<int:sid>/update-target', methods=['POST'])
 @login_required
-def update_streamer_youtube(sid):
-    """更新博主绑定的YouTube频道"""
+def update_streamer_target(sid):
+    """更新博主绑定的推流目标"""
     streamer = Streamer.query.get_or_404(sid)
-    channel_id = request.form.get('youtube_channel_id', '').strip()
-    streamer.youtube_channel_id = int(channel_id) if channel_id else None
+    target_id = request.form.get('push_target_id', '').strip()
+    streamer.push_target_id = int(target_id) if target_id else None
     db.session.commit()
-    return jsonify({'ok': True, 'message': 'YouTube频道已更新'})
+    return jsonify({'ok': True, 'message': '推流目标已更新'})
 
 
 @app.route('/streamers/<int:sid>/check', methods=['POST'])
 @login_required
 def check_now(sid):
-    """手动立即检测某博主"""
     from monitor_engine import check_streamer_live
     streamer = Streamer.query.get_or_404(sid)
     is_live, stream_url, err = check_streamer_live(streamer)
@@ -195,56 +193,35 @@ def start_manual_push(sid):
     """手动启动推流"""
     streamer = Streamer.query.get_or_404(sid)
 
-    # 检查是否已有活跃推流
     existing = ActiveStream.query.filter_by(
         streamer_id=sid
     ).filter(ActiveStream.status.in_(['running', 'starting'])).first()
     if existing:
         return jsonify({'ok': False, 'message': '已有推流在运行'})
 
-    # 获取流地址
     from monitor_engine import check_streamer_live
     is_live, stream_url, err = check_streamer_live(streamer)
     if not is_live or not stream_url:
         return jsonify({'ok': False, 'message': f'未在直播或获取流失败: {err}'})
 
-    # 获取博主绑定的YouTube频道
-    channel = YouTubeChannel.query.get(streamer.youtube_channel_id) if streamer.youtube_channel_id else None
-    if not channel:
-        return jsonify({'ok': False, 'message': '该博主未绑定YouTube频道，请先在列表中选择'})
+    target = PushTarget.query.get(streamer.push_target_id) if streamer.push_target_id else None
+    if not target:
+        return jsonify({'ok': False, 'message': '该博主未绑定推流目标，请先选择'})
 
-    try:
-        title = (channel.default_title_template or '{streamer_name} 直播转播').format(
-            streamer_name=streamer.name
-        )
-        rtmp_url, stream_key, broadcast_id, stream_id = \
-            youtube_engine.create_broadcast_and_get_rtmp(
-                channel, title,
-                channel.default_description or '',
-                channel.default_privacy or 'public'
-            )
+    active = ActiveStream(
+        streamer_id=streamer.id,
+        push_target_id=target.id,
+        rtmp_url=target.rtmp_url,
+        stream_key=target.stream_key,
+        source_url=stream_url,
+        status='starting'
+    )
+    db.session.add(active)
+    db.session.commit()
 
-        active = ActiveStream(
-            streamer_id=streamer.id,
-            youtube_channel_id=channel.id,
-            broadcast_id=broadcast_id,
-            broadcast_title=title,
-            stream_id=stream_id,
-            rtmp_url=rtmp_url,
-            stream_key=stream_key,
-            source_url=stream_url,
-            status='starting'
-        )
-        db.session.add(active)
-        db.session.commit()
-
-        stream_engine.start_ffmpeg_push(active.id)
-        _log(sid, 'success', 'manual_push',
-             f'手动推流已启动: {title}')
-        return jsonify({'ok': True, 'message': f'推流已启动: {title}'})
-    except Exception as e:
-        _log(sid, 'error', 'manual_push_fail', f'手动推流失败: {e}')
-        return jsonify({'ok': False, 'message': f'推流失败: {e}'})
+    stream_engine.start_ffmpeg_push(active.id)
+    _log(sid, 'success', 'manual_push', f'手动推流已启动 → {target.name}')
+    return jsonify({'ok': True, 'message': f'推流已启动 → {target.name}'})
 
 
 @app.route('/streamers/<int:sid>/stop-push', methods=['POST'])
@@ -258,83 +235,71 @@ def stop_manual_push(sid):
         return jsonify({'ok': False, 'message': '没有运行中的推流'})
 
     stream_engine.stop_ffmpeg_push(active.id, force=True)
-
-    # 结束YouTube广播
-    if active.youtube_channel and active.broadcast_id:
-        try:
-            youtube_engine.end_broadcast(
-                active.youtube_channel, active.broadcast_id
-            )
-        except Exception as e:
-            logger.warning(f"结束广播失败: {e}")
-
     _log(sid, 'info', 'manual_stop', '手动停止推流')
     return jsonify({'ok': True, 'message': '推流已停止'})
 
 
-# ─── YouTube频道管理 ───
+# ─── 推流目标管理(替代YouTube OAuth) ───
 
-@app.route('/youtube')
+@app.route('/targets')
 @login_required
-def youtube_page():
-    channels = YouTubeChannel.query.all()
-    has_secret = os.path.exists(Config.YOUTUBE_CLIENT_SECRETS_FILE)
-    return render_template('youtube.html',
-                           channels=channels,
-                           has_secret=has_secret)
+def targets():
+    targets = PushTarget.query.order_by(PushTarget.created_at.desc()).all()
+    return render_template('targets.html', targets=targets, yt_rtmp=Config.YOUTUBE_RTMP_BASE)
 
 
-@app.route('/youtube/auth-start', methods=['POST'])
+@app.route('/targets/add', methods=['POST'])
 @login_required
-def youtube_auth_start():
-    """生成OAuth授权URL"""
-    try:
-        auth_url = youtube_engine.get_auth_url()
-        session['youtube_auth_started'] = True
-        return jsonify({'ok': True, 'auth_url': auth_url})
-    except Exception as e:
-        return jsonify({'ok': False, 'message': str(e)})
+def add_target():
+    name = request.form.get('name', '').strip()
+    rtmp_url = request.form.get('rtmp_url', '').strip()
+    stream_key = request.form.get('stream_key', '').strip()
+    title_tpl = request.form.get('title_template', '{streamer_name} 直播转播').strip()
 
+    if not name or not rtmp_url or not stream_key:
+        return jsonify({'ok': False, 'message': '名称、RTMP地址、流密钥不能为空'})
 
-@app.route('/youtube/auth-complete', methods=['POST'])
-@login_required
-def youtube_auth_complete():
-    """用授权码完成认证"""
-    code = request.form.get('code', '').strip()
-    if not code:
-        return jsonify({'ok': False, 'message': '请输入授权码'})
-    try:
-        token_info = youtube_engine.exchange_code_for_token(code)
-        channel = youtube_engine.save_channel(token_info)
-        return jsonify({
-            'ok': True,
-            'message': f'频道 {channel.channel_title} 已添加'
-        })
-    except Exception as e:
-        return jsonify({'ok': False, 'message': str(e)})
-
-
-@app.route('/youtube/<int:cid>/delete', methods=['POST'])
-@login_required
-def delete_youtube_channel(cid):
-    youtube_engine.delete_channel(cid)
-    flash('YouTube频道已删除', 'success')
-    return redirect(url_for('youtube_page'))
-
-
-@app.route('/youtube/<int:cid>/update', methods=['POST'])
-@login_required
-def update_youtube_channel(cid):
-    channel = YouTubeChannel.query.get_or_404(cid)
-    channel.default_title_template = request.form.get(
-        'title_template', '{streamer_name} 直播转播'
+    target = PushTarget(
+        name=name,
+        rtmp_url=rtmp_url,
+        stream_key=stream_key,
+        title_template=title_tpl
     )
-    channel.default_description = request.form.get('description', '')
-    channel.default_privacy = request.form.get('privacy', 'public')
-    channel.default_category_id = request.form.get('category_id', '22')
+    db.session.add(target)
     db.session.commit()
-    flash('YouTube配置已更新', 'success')
-    return redirect(url_for('youtube_page'))
+    flash(f'推流目标 {name} 已添加', 'success')
+    return redirect(url_for('targets'))
+
+
+@app.route('/targets/<int:tid>/delete', methods=['POST'])
+@login_required
+def delete_target(tid):
+    target = PushTarget.query.get_or_404(tid)
+    # 检查是否有关联博主
+    linked = Streamer.query.filter_by(push_target_id=tid).count()
+    if linked:
+        flash(f'有 {linked} 个博主绑定到此目标，请先解绑', 'error')
+        return redirect(url_for('targets'))
+    db.session.delete(target)
+    db.session.commit()
+    flash(f'推流目标 {target.name} 已删除', 'success')
+    return redirect(url_for('targets'))
+
+
+@app.route('/targets/<int:tid>/update', methods=['POST'])
+@login_required
+def update_target(tid):
+    target = PushTarget.query.get_or_404(tid)
+    target.name = request.form.get('name', target.name).strip()
+    target.rtmp_url = request.form.get('rtmp_url', target.rtmp_url).strip()
+    new_key = request.form.get('stream_key', '').strip()
+    if new_key:
+        target.stream_key = new_key
+    target.title_template = request.form.get('title_template', target.title_template).strip()
+    target.is_active = request.form.get('is_active', 'off') == 'on'
+    db.session.commit()
+    flash('推流目标已更新', 'success')
+    return redirect(url_for('targets'))
 
 
 # ─── 日志 ───
@@ -353,7 +318,6 @@ def logs():
 @app.route('/api/logs/recent')
 @login_required
 def api_recent_logs():
-    """API: 获取最近日志"""
     logs = StreamLog.query.order_by(
         StreamLog.timestamp.desc()
     ).limit(20).all()
@@ -431,7 +395,6 @@ def reset_password(uid):
 @app.route('/api/status')
 @login_required
 def api_status():
-    """获取系统状态(给前端轮询用)"""
     streamers = Streamer.query.all()
     active = ActiveStream.query.filter(
         ActiveStream.status.in_(['running', 'starting'])
@@ -449,7 +412,6 @@ def api_status():
             'id': a.id,
             'streamer_id': a.streamer_id,
             'streamer_name': a.streamer.name if a.streamer else '',
-            'title': a.broadcast_title,
             'status': a.status,
             'started_at': a.started_at.strftime('%H:%M:%S') if a.started_at else '',
         } for a in active],

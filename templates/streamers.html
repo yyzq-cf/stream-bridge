@@ -16,10 +16,10 @@
             </select>
             <input type="text" name="name" class="form-control" placeholder="博主名称/备注" required>
             <input type="text" name="room_id" class="form-control" placeholder="房间号或完整URL" required style="flex:2">
-            <select name="youtube_channel_id" class="form-control">
-                <option value="">不绑定YouTube</option>
-                {% for ch in channels %}
-                <option value="{{ ch.id }}">{{ ch.channel_title }}</option>
+            <select name="push_target_id" class="form-control">
+                <option value="">不绑定推流目标</option>
+                {% for t in targets %}
+                <option value="{{ t.id }}">{{ t.name }}</option>
                 {% endfor %}
             </select>
             <label class="checkbox-label">
@@ -27,8 +27,8 @@
             </label>
             <button type="submit" class="btn btn-primary">添加</button>
         </form>
-        {% if not channels %}
-        <p style="margin-top:10px;color:var(--text-dim);font-size:13px;">⚠️ 还没有配置YouTube频道，请先到 <a href="{{ url_for('youtube_page') }}">YouTube页面</a> 添加频道，否则无法推流</p>
+        {% if not targets %}
+        <p style="margin-top:10px;color:var(--text-dim);font-size:13px;">⚠️ 还没有配置推流目标，请先到 <a href="{{ url_for('targets') }}">推流目标页面</a> 添加RTMP地址和流密钥</p>
         {% endif %}
     </div>
 </div>
@@ -43,7 +43,7 @@
             <thead>
                 <tr>
                     <th>ID</th><th>平台</th><th>名称</th><th>房间号</th>
-                    <th>直播中</th><th>监控</th><th>推送到YouTube</th><th>最后检查</th><th>操作</th>
+                    <th>直播中</th><th>监控</th><th>推流目标</th><th>最后检查</th><th>操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -64,10 +64,10 @@
                         </label>
                     </td>
                     <td>
-                        <select class="form-control yt-select" style="min-width:140px;font-size:12px;" onchange="updateYouTubeChannel({{ s.id }}, this.value)">
+                        <select class="form-control yt-select" style="min-width:130px;font-size:12px;" onchange="updateTarget({{ s.id }}, this.value)">
                             <option value="">未绑定</option>
-                            {% for ch in channels %}
-                            <option value="{{ ch.id }}" {{ 'selected' if s.youtube_channel_id == ch.id else '' }}>{{ ch.channel_title }}</option>
+                            {% for t in targets %}
+                            <option value="{{ t.id }}" {{ 'selected' if s.push_target_id == t.id else '' }}>{{ t.name }}</option>
                             {% endfor %}
                         </select>
                     </td>
