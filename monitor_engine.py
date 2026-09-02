@@ -35,6 +35,7 @@ def check_streamer_live(streamer):
         'huya': 'platforms.huya:check_huya_live',
         'douyu': 'platforms.douyu:check_douyu_live',
         'yy': 'platforms.yy:check_yy_live',
+        'youtube': 'platforms.youtube:check_youtube_live',
     }
 
     if streamer.platform in platform_checkers:
@@ -44,7 +45,7 @@ def check_streamer_live(streamer):
         check_fn = getattr(mod, func_name)
         return check_fn(url)
 
-    # 其他平台(twitch/youtube/custom): 用yt-dlp
+    # 其他平台(twitch/custom): 用yt-dlp
     return _check_with_ytdlp(url)
 
 

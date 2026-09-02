@@ -310,6 +310,7 @@ def preview_streamer():
         'huya': 'platforms.huya:get_streamer_info',
         'douyu': 'platforms.douyu:get_streamer_info',
         'yy': 'platforms.yy:get_streamer_info',
+        'youtube': 'platforms.youtube:get_streamer_info',
     }
 
     if platform not in info_funcs:
