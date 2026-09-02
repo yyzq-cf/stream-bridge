@@ -16,6 +16,7 @@ from config import Config
 from models import db, User, Streamer, PushTarget, ActiveStream, StreamLog, Setting, VideoPush
 from monitor_engine import start_monitor, stop_monitor
 import stream_engine
+import record_engine
 
 logging.basicConfig(
     level=logging.INFO,
@@ -880,6 +881,60 @@ def api_status():
         } for a in active],
         'monitor_running': True,
     })
+
+
+
+# ─── 直播录制 ───
+
+@app.route('/recordings')
+@login_required
+def recordings_page():
+    """录制文件列表页"""
+    files = record_engine.list_recordings()
+    return render_template('recordings.html', files=files)
+
+
+@app.route('/streamers/<int:sid>/record', methods=['POST'])
+@login_required
+def start_record(sid):
+    """手动开始录制"""
+    success, msg = record_engine.start_recording(sid)
+    return jsonify({'ok': success, 'message': msg})
+
+
+@app.route('/streamers/<int:sid>/stop-record', methods=['POST'])
+@login_required
+def stop_record(sid):
+    """停止录制"""
+    success, msg = record_engine.stop_recording(sid)
+    return jsonify({'ok': success, 'message': msg})
+
+
+@app.route('/streamers/<int:sid>/record-status')
+@login_required
+def record_status(sid):
+    """获取录制状态"""
+    info = record_engine.get_recording_info(sid)
+    return jsonify(info)
+
+
+@app.route('/recordings/<filename>/download')
+@login_required
+def download_recording(filename):
+    """下载录制文件"""
+    import os
+    from flask import send_from_directory
+    record_dir = os.path.join(Config.DATA_DIR, 'recordings')
+    return send_from_directory(record_dir, filename, as_attachment=True)
+
+
+@app.route('/recordings/<filename>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_recording_route(filename):
+    """删除录制文件"""
+    success, msg = record_engine.delete_recording(filename)
+    return jsonify({'ok': success, 'message': msg})
 
 
 def _log(streamer_id, level, action, message):

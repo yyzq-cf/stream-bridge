@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}录制文件 - StreamBridge{% endblock %}
+{% block content %}
+<h1 class="page-title">录制文件</h1>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>录制列表 ({{ files|length }})</h2>
+    </div>
+    <div class="panel-body">
+        {% if files %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>文件名</th>
+                    <th>大小</th>
+                    <th>录制时间</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in files %}
+                <tr>
+                    <td title="{{ f.filename }}">{{ f.filename[:40] }}{% if f.filename|length > 40 %}...{% endif %}</td>
+                    <td>{{ f.size_mb }} MB</td>
+                    <td>{{ f.created_at }}</td>
+                    <td>
+                        {% if f.recording %}
+                        <span class="live-dot live"></span> <span style="color:var(--danger);">录制中</span>
+                        {% else %}
+                        <span style="color:var(--text-dim);">已完成</span>
+                        {% endif %}
+                    </td>
+                    <td class="action-buttons">
+                        <a href="/recordings/{{ f.filename }}/download" class="btn btn-sm btn-info">下载</a>
+                        {% if not f.recording %}
+                        <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ f.filename }}')">删除</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">还没有录制文件，在博主管理页面点击「录制」按钮开始录制</div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function deleteFile(filename) {
+    if (!confirm('确定删除 ' + filename + ' ?')) return;
+    fetch('/recordings/' + filename, {method: 'DELETE'})
+        .then(r => r.json()).then(data => {
+            if (data.ok) location.reload();
+            else alert(data.message || '删除失败');
+        });
+}
+</script>
+{% endblock %}

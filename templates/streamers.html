@@ -123,6 +123,7 @@ function previewStreamer() {
                         <button class="btn btn-sm btn-info" onclick="checkNow({{ s.id }})">检测</button>
                         <button class="btn btn-sm btn-success" onclick="startPush({{ s.id }})" {{ '' if s.is_live else 'disabled title="未在直播"' }}>推流</button>
                         <button class="btn btn-sm btn-warning" onclick="stopPush({{ s.id }})">停止</button>
+                        <button class="btn btn-sm btn-record" id="record-btn-{{ s.id }}" onclick="toggleRecord({{ s.id }}, {{ 'true' if s.is_live else 'false' }})" title="录制为本地MP4">录制</button>
                         <button class="btn btn-sm" onclick="editStreamer({{ s.id }}, '{{ s.name }}', '{{ s.platform }}', '{{ s.room_id }}', {{ s.push_target_id or 'null' }})">编辑</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteStreamer({{ s.id }}, '{{ s.name }}')">删除</button>
                     </td>

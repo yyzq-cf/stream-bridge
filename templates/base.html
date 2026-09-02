@@ -21,6 +21,7 @@
             {% endif %}
             <a href="{{ url_for('logs') }}" class="{% if request.endpoint == 'logs' %}active{% endif %}">日志</a>
             <a href="{{ url_for('video_push') }}" class="{% if request.endpoint == 'video_push' %}active{% endif %}">视频推流</a>
+            <a href="{{ url_for('recordings_page') }}" class="{% if request.endpoint == 'recordings_page' %}active{% endif %}">录制</a>
             {% if current_user.is_admin %}
             <a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">设置</a>
             {% endif %}
