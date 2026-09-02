@@ -98,7 +98,7 @@ function previewStreamer() {
                     <span class="platform-logo platform-logo-{{ s.platform }}"></span>
                     <span class="badge badge-platform">{{ config.SUPPORTED_PLATFORMS.get(s.platform, s.platform) }}</span>
                     </span></td>
-                    <td>{{ s.name }}</td>
+                    <td><a href="#" onclick="window.open(getLiveUrl('{{ s.platform }}', '{{ s.room_id }}'), '_blank'); return false;" style="text-decoration:none;color:inherit;" title="点击直达直播间">{{ s.name }}</a></td>
                     <td class="room-id" title="{{ s.room_id }}">{{ s.room_id[:30] }}{% if s.room_id|length > 30 %}...{% endif %}</td>
                     <td>
                         <span class="live-dot {{ 'live' if s.is_live else '' }}"></span>
