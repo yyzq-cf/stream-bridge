@@ -1,48 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}博主管理 - StreamBridge
-<script>
-function previewStreamer() {
-    const platform = document.getElementById('add-platform').value;
-    const roomId = document.getElementById('add-room-id').value.trim();
-    if (!platform || !roomId) return;
-    if (platform === 'twitch' || platform === 'youtube' || platform === 'custom') return;
-
-    const btn = document.getElementById('preview-btn');
-    const nameInput = document.getElementById('add-name');
-    const origText = btn.textContent;
-    btn.textContent = '识别中...';
-    btn.disabled = true;
-
-    fetch('/streamers/preview', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'platform=' + encodeURIComponent(platform) + '&room_id=' + encodeURIComponent(roomId)
-    }).then(r => r.json()).then(data => {
-        btn.textContent = origText;
-        btn.disabled = false;
-        if (data.ok && data.name) {
-            if (!nameInput.value || nameInput.value !== data.name) {
-                nameInput.value = data.name;
-                nameInput.style.borderColor = '#28a745';
-                setTimeout(() => nameInput.style.borderColor = '', 2000);
-            }
-            btn.textContent = data.live ? '✅直播中' : '✅已识别';
-            setTimeout(() => btn.textContent = origText, 2000);
-        } else if (data.message && !data.ok) {
-            btn.textContent = '❌失败';
-            setTimeout(() => btn.textContent = origText, 2000);
-        } else {
-            btn.textContent = '未识别';
-            setTimeout(() => btn.textContent = origText, 2000);
-        }
-    }).catch(() => {
-        btn.textContent = origText;
-        btn.disabled = false;
-    });
-}
-</script>
-
-{% endblock %}
+{% block title %}博主管理 - StreamBridge{% endblock %}
 {% block content %}
 <h1 class="page-title">博主管理</h1>
 
@@ -87,7 +44,7 @@ function previewStreamer() {
             <thead>
                 <tr>
                     <th>ID</th><th>平台</th><th>名称</th><th>房间号</th>
-                    <th>直播中</th><th>监控</th><th>推流目标</th><th>最后检查</th><th>操作</th>
+                    <th>直播中</th><th>录制</th><th>监控</th><th>推流目标</th><th>最后检查</th><th>操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -103,6 +60,12 @@ function previewStreamer() {
                     <td>
                         <span class="live-dot {{ 'live' if s.is_live else '' }}"></span>
                         <span class="live-text">{{ '直播中' if s.is_live else '未直播' }}</span>
+                    </td>
+                    <td>
+                        <span id="record-status-{{ s.id }}">
+                            <span class="record-dot"></span>
+                            <span class="record-text" style="color:var(--text-dim);">未录制</span>
+                        </span>
                     </td>
                     <td>
                         <label class="switch">
@@ -180,14 +143,12 @@ function previewStreamer() {
     const platform = document.getElementById('add-platform').value;
     const roomId = document.getElementById('add-room-id').value.trim();
     if (!platform || !roomId) return;
-    if (platform === 'twitch' || platform === 'youtube' || platform === 'custom') return;
-
+    if (platform === 'twitch' || platform === 'custom') return;
     const btn = document.getElementById('preview-btn');
     const nameInput = document.getElementById('add-name');
     const origText = btn.textContent;
     btn.textContent = '识别中...';
     btn.disabled = true;
-
     fetch('/streamers/preview', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -201,19 +162,13 @@ function previewStreamer() {
                 nameInput.style.borderColor = '#28a745';
                 setTimeout(() => nameInput.style.borderColor = '', 2000);
             }
-            btn.textContent = data.live ? '✅直播中' : '✅已识别';
-            setTimeout(() => btn.textContent = origText, 2000);
-        } else if (data.message && !data.ok) {
-            btn.textContent = '❌失败';
+            btn.textContent = data.live ? '直播中' : '已识别';
             setTimeout(() => btn.textContent = origText, 2000);
         } else {
             btn.textContent = '未识别';
             setTimeout(() => btn.textContent = origText, 2000);
         }
-    }).catch(() => {
-        btn.textContent = origText;
-        btn.disabled = false;
-    });
+    }).catch(() => { btn.textContent = origText; btn.disabled = false; });
 }
 
 function getLiveUrl(platform, roomId) {
@@ -230,6 +185,77 @@ function getLiveUrl(platform, roomId) {
     };
     return (urls[platform] || '') + roomId;
 }
-</script>
 
+function updateRecordStatus(sid, recording, sizeMb) {
+    const el = document.getElementById('record-status-' + sid);
+    if (!el) return;
+    const dot = el.querySelector('.record-dot');
+    const text = el.querySelector('.record-text');
+    if (recording) {
+        dot.className = 'record-dot recording';
+        text.textContent = sizeMb ? '录制中 ' + sizeMb + 'MB' : '录制中';
+        text.style.color = 'var(--danger, #dc3545)';
+    } else {
+        dot.className = 'record-dot';
+        text.textContent = '未录制';
+        text.style.color = 'var(--text-dim)';
+    }
+}
+
+function toggleRecord(sid, isLive) {
+    const btn = document.getElementById('record-btn-' + sid);
+    if (btn.textContent === '录制') {
+        if (!isLive) { alert('博主未在直播，无法录制'); return; }
+        btn.textContent = '启动中...';
+        btn.disabled = true;
+        fetch('/streamers/' + sid + '/record', {method: 'POST'})
+            .then(r => r.json()).then(data => {
+                btn.disabled = false;
+                if (data.ok) {
+                    btn.textContent = '停止';
+                    btn.classList.add('recording-active');
+                    updateRecordStatus(sid, true);
+                } else {
+                    btn.textContent = '录制';
+                    alert(data.message || '录制启动失败');
+                }
+            }).catch(() => { btn.disabled = false; btn.textContent = '录制'; });
+    } else {
+        btn.textContent = '停止中...';
+        btn.disabled = true;
+        fetch('/streamers/' + sid + '/stop-record', {method: 'POST'})
+            .then(r => r.json()).then(data => {
+                btn.disabled = false;
+                btn.textContent = '录制';
+                btn.classList.remove('recording-active');
+                updateRecordStatus(sid, false);
+            }).catch(() => { btn.disabled = false; btn.textContent = '录制'; });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[id^="record-btn-"]').forEach(btn => {
+        const sid = btn.id.split('-')[2];
+        fetch('/streamers/' + sid + '/record-status').then(r => r.json()).then(data => {
+            if (data.recording) {
+                btn.textContent = '停止';
+                btn.classList.add('recording-active');
+                updateRecordStatus(sid, true, data.size_mb);
+            } else {
+                updateRecordStatus(sid, false);
+            }
+        });
+    });
+    setInterval(function() {
+        document.querySelectorAll('[id^="record-btn-"]').forEach(btn => {
+            if (btn.textContent.includes('停止')) {
+                const sid = btn.id.split('-')[2];
+                fetch('/streamers/' + sid + '/record-status').then(r => r.json()).then(data => {
+                    if (data.recording) updateRecordStatus(sid, true, data.size_mb);
+                });
+            }
+        });
+    }, 5000);
+});
+</script>
 {% endblock %}
