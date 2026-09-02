@@ -214,6 +214,21 @@ function previewStreamer() {
         btn.disabled = false;
     });
 }
+
+function getLiveUrl(platform, roomId) {
+    if (roomId.startsWith('http')) return roomId;
+    const urls = {
+        douyin: 'https://live.douyin.com/',
+        kuaishou: 'https://live.kuaishou.com/',
+        bilibili: 'https://live.bilibili.com/',
+        huya: 'https://www.huya.com/',
+        douyu: 'https://www.douyu.com/',
+        yy: 'https://www.yy.com/',
+        twitch: 'https://www.twitch.tv/',
+        youtube: 'https://www.youtube.com/watch?v=',
+    };
+    return (urls[platform] || '') + roomId;
+}
 </script>
 
 {% endblock %}
