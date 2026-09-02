@@ -268,3 +268,84 @@ def _extract_web_rid(url):
     if url.strip().isdigit():
         return url.strip()
     return None
+
+
+def get_streamer_info(url):
+    """
+    获取抖音直播博主信息(不获取流地址, 只查信息)
+    通过webcast API查询, 返回 {'name': str, 'live': bool, 'error': str or None}
+    复用已有的web_rid提取和API请求(headers/cookie/a_bogus签名)逻辑
+    """
+    try:
+        web_rid = _extract_web_rid(url)
+        if not web_rid:
+            return {'name': '', 'live': False, 'error': f'无法提取房间号: {url}'}
+
+        proxy = _get_proxy()
+
+        # 构建webcast API请求 (同 check_douyin_live)
+        params = {
+            "aid": "6383",
+            "app_name": "douyin_web",
+            "live_id": "1",
+            "device_platform": "web",
+            "language": "zh-CN",
+            "browser_language": "zh-CN",
+            "browser_platform": "Win32",
+            "browser_name": "Chrome",
+            "browser_version": "116.0.0.0",
+            "web_rid": web_rid,
+            'msToken': '',
+        }
+
+        api = f'https://live.douyin.com/webcast/room/web/enter/?{urllib.parse.urlencode(params)}'
+        query_string = urllib.parse.urlparse(api).query
+        a_bogus = ab_sign(query_string, DOUYIN_UA)
+        api += "&a_bogus=" + a_bogus
+
+        headers = [
+            '-H', f'User-Agent: {DOUYIN_UA}',
+            '-H', f'Cookie: {DOUYIN_COOKIE}',
+            '-H', 'Referer: https://live.douyin.com/',
+            '-H', 'Accept: application/json, text/plain, */*',
+            '-H', 'Accept-Language: zh-CN,zh;q=0.9',
+        ]
+
+        cmd = ['curl', '-s', '--compressed', '-L', api] + headers
+        if proxy:
+            cmd += ['--proxy', proxy]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        resp = result.stdout
+
+        if not resp or len(resp) < 100:
+            return {'name': '', 'live': False, 'error': f'API返回内容过少({len(resp)}字节)'}
+
+        data = json.loads(resp)
+
+        # 风控/异常状态码视为错误
+        if data.get('status_code') != 0:
+            status_msg = data.get('status_msg', '')
+            return {
+                'name': '',
+                'live': False,
+                'error': f'抖音API状态: status_code={data.get("status_code")} msg={status_msg}',
+            }
+
+        # 博主名: data['data']['user']['nickname']
+        name = data.get('data', {}).get('user', {}).get('nickname', '')
+
+        # 直播状态: room_data['status'] == 2 表示直播中
+        # room_data 位于 data['data']['data'][0]
+        live = False
+        room_list = data.get('data', {}).get('data', [])
+        if room_list:
+            room_data = room_list[0]
+            live = room_data.get('status') == 2
+        else:
+            # data.data 为空, 可能是 VR 直播或特殊类型
+            logger.warning(f"抖音房间 {web_rid} 未返回房间数据")
+
+        return {'name': name, 'live': live, 'error': None}
+
+    except Exception as e:
+        return {'name': '', 'live': False, 'error': str(e)}

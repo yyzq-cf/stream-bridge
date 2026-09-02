@@ -1,5 +1,48 @@
 {% extends 'base.html' %}
-{% block title %}博主管理 - StreamBridge{% endblock %}
+{% block title %}博主管理 - StreamBridge
+<script>
+function previewStreamer() {
+    const platform = document.getElementById('add-platform').value;
+    const roomId = document.getElementById('add-room-id').value.trim();
+    if (!platform || !roomId) return;
+    if (platform === 'twitch' || platform === 'youtube' || platform === 'custom') return;
+
+    const btn = document.getElementById('preview-btn');
+    const nameInput = document.getElementById('add-name');
+    const origText = btn.textContent;
+    btn.textContent = '识别中...';
+    btn.disabled = true;
+
+    fetch('/streamers/preview', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'platform=' + encodeURIComponent(platform) + '&room_id=' + encodeURIComponent(roomId)
+    }).then(r => r.json()).then(data => {
+        btn.textContent = origText;
+        btn.disabled = false;
+        if (data.ok && data.name) {
+            if (!nameInput.value || nameInput.value !== data.name) {
+                nameInput.value = data.name;
+                nameInput.style.borderColor = '#28a745';
+                setTimeout(() => nameInput.style.borderColor = '', 2000);
+            }
+            btn.textContent = data.live ? '✅直播中' : '✅已识别';
+            setTimeout(() => btn.textContent = origText, 2000);
+        } else if (data.message && !data.ok) {
+            btn.textContent = '❌失败';
+            setTimeout(() => btn.textContent = origText, 2000);
+        } else {
+            btn.textContent = '未识别';
+            setTimeout(() => btn.textContent = origText, 2000);
+        }
+    }).catch(() => {
+        btn.textContent = origText;
+        btn.disabled = false;
+    });
+}
+</script>
+
+{% endblock %}
 {% block content %}
 <h1 class="page-title">博主管理</h1>
 
@@ -9,13 +52,14 @@
     </div>
     <div class="panel-body">
         <form method="POST" action="{{ url_for('add_streamer') }}" class="form-inline">
-            <select name="platform" class="form-control" required>
+            <select name="platform" id="add-platform" class="form-control" required>
                 {% for key, label in config.SUPPORTED_PLATFORMS.items() %}
                 <option value="{{ key }}">{{ label }}</option>
                 {% endfor %}
             </select>
-            <input type="text" name="name" class="form-control" placeholder="博主名称/备注" required>
-            <input type="text" name="room_id" class="form-control" placeholder="房间号或完整URL" required style="flex:2">
+            <input type="text" name="name" id="add-name" class="form-control" placeholder="博主名称/备注" required>
+            <input type="text" name="room_id" id="add-room-id" class="form-control" placeholder="房间号或完整URL" required style="flex:2" onblur="previewStreamer()">
+            <button type="button" class="btn btn-info" onclick="previewStreamer()" id="preview-btn">识别</button>
             <select name="push_target_id" class="form-control">
                 <option value="">不绑定推流目标</option>
                 {% for t in targets %}
@@ -126,4 +170,47 @@
         </form>
     </div>
 </div>
+
+<script>
+function previewStreamer() {
+    const platform = document.getElementById('add-platform').value;
+    const roomId = document.getElementById('add-room-id').value.trim();
+    if (!platform || !roomId) return;
+    if (platform === 'twitch' || platform === 'youtube' || platform === 'custom') return;
+
+    const btn = document.getElementById('preview-btn');
+    const nameInput = document.getElementById('add-name');
+    const origText = btn.textContent;
+    btn.textContent = '识别中...';
+    btn.disabled = true;
+
+    fetch('/streamers/preview', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'platform=' + encodeURIComponent(platform) + '&room_id=' + encodeURIComponent(roomId)
+    }).then(r => r.json()).then(data => {
+        btn.textContent = origText;
+        btn.disabled = false;
+        if (data.ok && data.name) {
+            if (!nameInput.value || nameInput.value !== data.name) {
+                nameInput.value = data.name;
+                nameInput.style.borderColor = '#28a745';
+                setTimeout(() => nameInput.style.borderColor = '', 2000);
+            }
+            btn.textContent = data.live ? '✅直播中' : '✅已识别';
+            setTimeout(() => btn.textContent = origText, 2000);
+        } else if (data.message && !data.ok) {
+            btn.textContent = '❌失败';
+            setTimeout(() => btn.textContent = origText, 2000);
+        } else {
+            btn.textContent = '未识别';
+            setTimeout(() => btn.textContent = origText, 2000);
+        }
+    }).catch(() => {
+        btn.textContent = origText;
+        btn.disabled = false;
+    });
+}
+</script>
+
 {% endblock %}

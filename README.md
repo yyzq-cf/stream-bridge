@@ -1,16 +1,17 @@
 # 🎥 StreamBridge - 直播转推YouTube管理平台
 
-实时监控抖音/快手等平台博主开播状态，自动拉流转推到YouTube Live。支持视频文件/在线直链推流。
+实时监控抖音/快手/B站/虎牙/斗鱼/YY等平台博主开播状态，自动拉流转推到YouTube Live。支持视频文件/在线直链推流、自动识别博主名称。
 
 ## ✨ 功能特性
 
 ### 直播转推
-- **多平台支持**：抖音、快手、B站、Twitch、YouTube、自定义RTMP
+- **多平台支持**：抖音、快手、B站、虎牙、斗鱼、YY、Twitch、YouTube、自定义RTMP
 - **自动监控**：定时检测博主开播状态，开播自动推流
 - **手动推流**：一键拉流推送到指定RTMP目标
 - **RTMP直推**：只需配置RTMP地址+流密钥，无需OAuth授权
 - **灵活绑定**：每个博主可绑定不同推流目标（多频道/多平台）
-- **FFmpeg拉流**：视频直接copy不转码，自动加Referer头解决抖音/快手CDN 403
+- **FFmpeg拉流**：视频直接copy不转码，自动加Referer头解决CDN 403
+- **自动识别博主**：输入房间号自动获取博主名称和直播状态，支持6个国内平台
 
 ### 视频文件推流
 - **本地文件上传**：支持mp4/mkv等格式，带实时进度条（百分比+速度+大小）
@@ -93,7 +94,7 @@ docker compose up -d
 2. 选择推流目标 → 勾选循环（可选）→ 添加
 3. 点击"开始推流"
 
-### 快手/抖音配置
+### 平台Cookie与代理配置
 - **快手Cookie**：设置页面配置Cookie绕过限流（F12 → Network → Request Headers → Cookie）
 - **代理配置**：设置页面配置HTTP/SOCKS5代理绕过IP限制
 
@@ -133,8 +134,14 @@ stream-bridge/
 ├── stream_engine.py       # 直播推流引擎(FFmpeg管理+码率统计)
 ├── video_engine.py        # 视频推流引擎(文件/URL/目录推流+循环)
 ├── platforms/             # 平台检测器
-│   ├── douyin.py          # 抖音直播检测(FLV流提取+URL清理+503重试)
-│   └── kuaishou.py        # 快手直播检测(curl+gzip/brotli+Cookie+代理)
+│   ├── base.py            # 公共HTTP请求工具(http_get/http_post/代理/Cookie)
+│   ├── ab_sign.py         # 抖音a_bogus签名算法(RC4)
+│   ├── douyin.py          # 抖音检测(webcast API + ttwid + a_bogus签名)
+│   ├── kuaishou.py        # 快手检测(__INITIAL_STATE__ JSON提取)
+│   ├── bilibili.py        # B站检测(room_init + playUrl API)
+│   ├── huya.py            # 虎牙检测(mp.huya.com微信小程序API)
+│   ├── douyu.py           # 斗鱼检测(betard + getH5Play API)
+│   └── yy.py              # YY检测(stream-manager API)
 ├── templates/             # Jinja2模板(8个页面)
 ├── static/                # CSS暗色/亮色主题 + JS交互
 ├── data/                  # SQLite数据库+上传文件+配置
@@ -148,7 +155,7 @@ stream-bridge/
 
 - **后端**：Flask + SQLAlchemy + SQLite + Gunicorn
 - **推流**：FFmpeg (-c:v copy 不转码)
-- **检测**：抖音/快手专用检测器 + yt-dlp(B站/Twitch)
+- **检测**：抖音/快手/B站/虎牙/斗鱼/YY专用API检测器 + yt-dlp(Twitch/YouTube)
 - **前端**：原生JS + CSS变量(亮/暗主题) + XMLHttpRequest(上传进度)
 - **部署**：Docker(amd64+arm64) + GitHub Actions CI
 
@@ -159,12 +166,25 @@ Docker Hub：https://hub.docker.com/r/ywsj/stream-bridge
 
 ## ⚠️ 注意事项
 
-- **抖音/快手**：依赖页面解析流地址，平台改版可能导致失效
+- **抖音风控**：使用webcast API + ttwid + a_bogus签名，有效绕过IP风控
 - **快手限流**：服务器IP可能被快手限流，需配置Cookie或代理
+- **斗鱼签名**：斗鱼流地址需要JS签名，当前使用简化方案，部分房间可能需要降级页面提取
 - **转码**：默认不转码(`copy`)，如需转码设 `VIDEO_CODEC=libx264`（增加CPU消耗）
 - **带宽**：不转码时带宽≈源流码率，1080p约3-6Mbps
 - **YouTube限制**：免费频道同时推流数量有限(1-3路)
 - **版权**：转推他人直播内容需注意版权问题
+
+## 🙏 致谢
+
+本项目的平台直播流检测方案参考了以下开源项目：
+
+- [**DouyinLiveRecorder**](https://github.com/ihmily/DouyinLiveRecorder) (⭐10k+) — 抖音/快手/B站/虎牙/斗鱼/YY等平台的API检测逻辑
+  - 抖音 `a_bogus` 签名算法 (`ab_sign.py`)
+  - 各平台webcast/room API调用方式
+  - 虎牙微信小程序API、B站room_init API等
+- [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) — Twitch/YouTube直播流检测
+
+感谢这些项目的开源贡献。
 
 ## 📝 License
 

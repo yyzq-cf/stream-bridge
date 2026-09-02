@@ -124,3 +124,73 @@ def _extract_rid(url):
     if url.strip().isdigit():
         return url.strip()
     return None
+
+
+def get_streamer_info(url):
+    """
+    获取斗鱼直播博主信息(不获取流地址, 只查信息)
+    通过betard API查询, 返回 {'name': str, 'live': bool, 'error': str or None}
+    复用已有的房间号提取(_extract_rid)和请求逻辑(headers/cookie/proxy)
+    """
+    try:
+        proxy = get_proxy()
+        cookie = get_cookie('douyu') or ''
+
+        rid = _extract_rid(url)
+        if not rid:
+            return {'name': '', 'live': False, 'error': f'无法提取房间号: {url}'}
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+            'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
+            'Referer': f'https://www.douyu.com/{rid}',
+        }
+        if cookie:
+            headers['Cookie'] = cookie
+
+        # 调用 betard API (同 check_douyin_live 的 Step1)
+        resp = http_get(
+            f'https://www.douyu.com/betard/{rid}',
+            headers=headers, proxy=proxy
+        )
+        room_data = json.loads(resp)
+        room = room_data.get('room', {})
+
+        # 博主名: json_data['room']['nickname']
+        name = room.get('nickname', '')
+
+        # 直播状态: videoLoop==0 and show_status==1
+        video_loop = room.get('videoLoop', 1)
+        show_status = room.get('show_status', 0)
+        live = (video_loop == 0 and show_status == 1)
+
+        return {'name': name, 'live': live, 'error': None}
+
+    except Exception as e:
+        return {'name': '', 'live': False, 'error': str(e)}
+
+
+def get_streamer_info(url):
+    """获取斗鱼博主信息(名称+直播状态)"""
+    proxy = get_proxy()
+    cookie = get_cookie('douyu') or ''
+    rid = _extract_rid(url)
+    if not rid:
+        return {'name': '', 'live': False, 'error': '无法提取房间号'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+        'Accept-Language': 'zh-CN,zh;q=0.8',
+        'Referer': f'https://www.douyu.com/{rid}',
+    }
+    if cookie:
+        headers['Cookie'] = cookie
+    try:
+        resp = http_get(f'https://www.douyu.com/betard/{rid}', headers=headers, proxy=proxy)
+        data = json.loads(resp)
+        room = data.get('room', {})
+        name = room.get('nickname', '')
+        is_live = room.get('videoLoop') == 0 and room.get('show_status') == 1
+        return {'name': name, 'live': is_live, 'error': None}
+    except Exception as e:
+        return {'name': '', 'live': False, 'error': str(e)}
+

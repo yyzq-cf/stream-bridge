@@ -290,6 +290,47 @@ def check_now(sid):
     })
 
 
+@app.route('/streamers/preview', methods=['POST'])
+@login_required
+def preview_streamer():
+    """根据平台和房间号自动识别博主信息"""
+    platform = request.form.get('platform', '').strip()
+    room_id = request.form.get('room_id', '').strip()
+
+    if not platform or not room_id:
+        return jsonify({'ok': False, 'message': '平台和房间号不能为空'})
+
+    from monitor_engine import _normalize_url
+    url = _normalize_url(platform, room_id)
+
+    info_funcs = {
+        'douyin': 'platforms.douyin:get_streamer_info',
+        'kuaishou': 'platforms.kuaishou:get_streamer_info',
+        'bilibili': 'platforms.bilibili:get_streamer_info',
+        'huya': 'platforms.huya:get_streamer_info',
+        'douyu': 'platforms.douyu:get_streamer_info',
+        'yy': 'platforms.yy:get_streamer_info',
+    }
+
+    if platform not in info_funcs:
+        return jsonify({'ok': True, 'name': '', 'live': False, 'message': '该平台暂不支持自动识别'})
+
+    try:
+        import importlib
+        module_path, func_name = info_funcs[platform].split(':')
+        mod = importlib.import_module(module_path)
+        info_fn = getattr(mod, func_name)
+        result = info_fn(url)
+        return jsonify({
+            'ok': True,
+            'name': result.get('name', ''),
+            'live': result.get('live', False),
+            'message': result.get('error', '')
+        })
+    except Exception as e:
+        return jsonify({'ok': False, 'message': f'识别异常: {e}'})
+
+
 # ─── 推流控制 ───
 
 @app.route('/streamers/<int:sid>/start-push', methods=['POST'])

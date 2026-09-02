@@ -116,3 +116,104 @@ def check_huya_live(url):
 
     except Exception as e:
         return False, None, f'虎牙API异常: {e}'
+
+
+def get_streamer_info(url):
+    """
+    获取虎牙直播博主信息(不获取流地址, 只查信息)
+    通过mp.huya.com/cache.php API查询, 返回 {'name': str, 'live': bool, 'error': str or None}
+    复用已有的房间号提取(含别名解析)和请求逻辑(headers/cookie/proxy)
+    """
+    try:
+        proxy = get_proxy()
+        cookie = get_cookie('huya') or ''
+
+        # 提取房间号 (同 check_huya_live)
+        room_id = url.split('?')[0].rstrip('/').rsplit('/', 1)[-1]
+        if not room_id:
+            return {'name': '', 'live': False, 'error': f'无法提取房间号: {url}'}
+
+        headers = {
+            'User-Agent': 'ios/7.830 (ios 17.0; ; iPhone 15 (A2846/A3089/A3090/A3092))',
+            'xweb_xhr': '1',
+            'referer': 'https://servicewechat.com/wx74767bf0b684f7d3/301/page-frame.html',
+            'accept-language': 'zh-CN,zh;q=0.9',
+        }
+        if cookie:
+            headers['Cookie'] = cookie
+
+        # 如果房间号包含字母, 需要先获取真实房间号
+        if any(c.isalpha() for c in room_id):
+            try:
+                html = http_get(url, headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
+                    'Accept-Language': 'zh-CN,zh;q=0.8',
+                }, proxy=proxy)
+                match = re.search(r'ProfileRoom":(.*?),"sPrivateHost', html)
+                if match:
+                    room_id = match.group(1)
+                else:
+                    return {'name': '', 'live': False, 'error': '请使用 https://www.huya.com/房间号 格式'}
+            except Exception as e:
+                return {'name': '', 'live': False, 'error': f'虎牙获取房间号异常: {e}'}
+
+        # 调用 mp.huya.com/cache.php (同 check_huya_live)
+        params = {
+            'm': 'Live',
+            'do': 'profileRoom',
+            'roomid': room_id,
+            'showSecret': '1',
+        }
+        api_url = f'https://mp.huya.com/cache.php?{urllib.parse.urlencode(params)}'
+
+        resp = http_get(api_url, headers=headers, proxy=proxy)
+        json_data = json.loads(resp)
+
+        data_obj = json_data.get('data', {})
+
+        # 博主名: data['data']['profileInfo']['nick']
+        name = data_obj.get('profileInfo', {}).get('nick', '')
+
+        # 直播状态: data['data']['realLiveStatus'] == 'ON'
+        live_status = data_obj.get('realLiveStatus', '')
+        live = live_status == 'ON'
+
+        return {'name': name, 'live': live, 'error': None}
+
+    except Exception as e:
+        return {'name': '', 'live': False, 'error': str(e)}
+
+
+def get_streamer_info(url):
+    """获取虎牙博主信息(名称+直播状态)"""
+    proxy = get_proxy()
+    cookie = get_cookie('huya') or ''
+    room_id = url.split('?')[0].rstrip('/').rsplit('/', 1)[-1]
+    headers = {
+        'User-Agent': 'ios/7.830 (ios 17.0; ; iPhone 15 (A2846/A3089/A3090/A3092))',
+        'xweb_xhr': '1',
+        'referer': 'https://servicewechat.com/wx74767bf0b684f7d3/301/page-frame.html',
+        'accept-language': 'zh-CN,zh;q=0.9',
+    }
+    if cookie:
+        headers['Cookie'] = cookie
+    # 字母房间号需先转换
+    if any(c.isalpha() for c in room_id):
+        try:
+            html = http_get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0'}, proxy=proxy)
+            match = re.search(r'ProfileRoom":(.*?),"sPrivateHost', html)
+            if match:
+                room_id = match.group(1)
+        except:
+            pass
+    params = {'m': 'Live', 'do': 'profileRoom', 'roomid': room_id, 'showSecret': '1'}
+    api_url = f'https://mp.huya.com/cache.php?{urllib.parse.urlencode(params)}'
+    try:
+        resp = http_get(api_url, headers=headers, proxy=proxy)
+        json_data = json.loads(resp)
+        name = json_data['data']['profileInfo']['nick']
+        is_live = json_data['data']['realLiveStatus'] == 'ON'
+        return {'name': name, 'live': is_live, 'error': None}
+    except Exception as e:
+        return {'name': '', 'live': False, 'error': str(e)}
+

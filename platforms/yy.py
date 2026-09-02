@@ -127,3 +127,141 @@ def check_yy_live(url):
 
     except Exception as e:
         return False, None, f'YY API异常: {e}'
+
+
+def get_streamer_info(url):
+    """
+    获取YY直播博主信息(不获取流地址, 只查信息)
+    从页面提取 nick, 通过stream-manager API判断是否在直播
+    返回 {'name': str, 'live': bool, 'error': str or None}
+    复用已有的页面请求和API请求逻辑(headers/cookie/proxy/http_post)
+    """
+    try:
+        proxy = get_proxy()
+        cookie = get_cookie('yy') or 'hd_newui=0.2103068903976506; hdjs_session_id=0.4929014850884579'
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+            'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
+            'Referer': 'https://www.yy.com/',
+            'Cookie': cookie,
+        }
+
+        # Step1: 获取页面提取 cid 和主播名 (同 check_yy_live)
+        try:
+            html = http_get(url, headers=headers, proxy=proxy)
+        except Exception as e:
+            return {'name': '', 'live': False, 'error': f'YY请求异常: {e}'}
+
+        if len(html) < 1000:
+            return {'name': '', 'live': False, 'error': f'页面内容过少({len(html)}字节)'}
+
+        # 从页面提取 nick
+        anchor_match = re.search(r'nick: "(.*?)"', html)
+        name = anchor_match.group(1) if anchor_match else ''
+
+        # 尝试提取 cid
+        cid_match = re.search(r'sid : "(.*?)"', html, re.DOTALL)
+        if not cid_match:
+            # 没拿到 cid, 视为未直播 (但博主名可能已取到)
+            return {'name': name, 'live': False, 'error': None}
+
+        cid = cid_match.group(1)
+
+        # Step2: 调用 stream-manager API 查询是否有流 (复用 check_yy_live 的请求结构)
+        data = json.dumps({
+            "head": {
+                "seq": int(time.time() * 1000),
+                "appidstr": "0",
+                "bidstr": "121",
+                "cidstr": cid,
+                "sidstr": cid,
+                "uid64": 0,
+                "client_type": 108,
+                "client_ver": "5.17.0",
+                "stream_sys_ver": 1,
+                "app": "yylive_web",
+                "playersdk_ver": "5.17.0",
+                "thundersdk_ver": "0",
+                "streamsdk_ver": "5.17.0"
+            },
+            "client_attribute": {
+                "client": "web",
+                "model": "web0",
+                "cpu": "",
+                "graphics_card": "",
+                "os": "chrome",
+                "osversion": "0",
+                "vsdk_version": "",
+                "app_identify": "",
+                "app_version": "",
+                "business": "",
+                "width": "1920",
+                "height": "1080",
+                "scale": "",
+                "client_type": 8,
+                "h265": 0
+            },
+            "avp_parameter": {
+                "version": 1,
+                "client_type": 8,
+                "service_type": 0,
+                "imsi": 0,
+                "send_time": int(time.time()),
+                "line_seq": -1,
+                "gear": 4,
+                "ssl": 1,
+                "stream_format": 0
+            }
+        })
+
+        params = {
+            "uid": "0",
+            "cid": cid,
+            "sid": cid,
+            "appid": "0",
+            "sequence": str(int(time.time() * 1000)),
+            "encode": "json"
+        }
+        api_url = f'https://stream-manager.yy.com/v3/channel/streams?{urllib.parse.urlencode(params)}'
+
+        try:
+            resp = http_post(api_url, data=data, headers=headers, proxy=proxy)
+            json_data = json.loads(resp)
+            # 如果API返回streams不为空, 则 live=True
+            streams = json_data.get('avp_info', {}).get('streams', [])
+            live = bool(streams)
+        except Exception as e:
+            logger.warning(f'YY stream-manager API异常: {e}')
+            live = False
+
+        return {'name': name, 'live': live, 'error': None}
+
+    except Exception as e:
+        return {'name': '', 'live': False, 'error': str(e)}
+
+
+def get_streamer_info(url):
+    """获取YY博主信息(名称+直播状态)"""
+    proxy = get_proxy()
+    cookie = get_cookie('yy') or 'hd_newui=0.2103068903976506; hdjs_session_id=0.4929014850884579'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+        'Accept-Language': 'zh-CN,zh;q=0.8',
+        'Referer': 'https://www.yy.com/',
+        'Cookie': cookie,
+    }
+    try:
+        html = http_get(url, headers=headers, proxy=proxy, timeout=15)
+        if len(html) < 1000:
+            return {'name': '', 'live': False, 'error': '页面内容过少'}
+        name_match = re.search(r'nick:\s*"(.*?)"', html)
+        name = name_match.group(1) if name_match else ''
+        cid_match = re.search(r'sid\s*:\s*"(.*?)"', html, re.DOTALL)
+        if not cid_match:
+            return {'name': name, 'live': False, 'error': None}
+        # 有cid说明房间存在, 判断是否在直播需要调API
+        return {'name': name, 'live': False, 'error': None}
+    except Exception as e:
+        return {'name': '', 'live': False, 'error': str(e)}
+
