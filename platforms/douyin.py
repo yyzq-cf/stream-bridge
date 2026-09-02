@@ -41,7 +41,10 @@ def check_douyin_live(url):
     for attempt in range(3):
         try:
             cmd = ['curl', '-s', '--compressed', '-L', url,
-                   '-H', f'User-Agent: {DOUYIN_HEADERS["User-Agent"]}']
+                   '-H', f'User-Agent: {DOUYIN_HEADERS["User-Agent"]}',
+                   '-H', 'Referer: https://live.douyin.com/',
+                   '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                   '-H', 'Accept-Language: zh-CN,zh;q=0.9']
             if proxy:
                 cmd += ['--proxy', proxy]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
@@ -61,12 +64,13 @@ def check_douyin_live(url):
     if len(html) < 1000:
         return False, None, '页面内容过少'
 
-    # 抖音页面中 & 被编码为 \u0026
-    decoded = html.replace('\\u0026', '&')
+    # 抖音页面中 & 被编码为 \u0026 或 &amp;
+    decoded = html.replace('\\u0026', '&').replace('&amp;', '&')
 
-    # 提取带sign参数的完整FLV URL
+    # 提取FLV URL — 抖音CDN域名格式: pull-flv-t6.douyincdn.com, pull-flv-t6-admin.douyincdn.com 等
+    # 兼容旧域名 pull-flv-l1 和 douyinliving.com
     flv_urls = re.findall(
-        r'(https?://pull-flv-l?\d+\.douyincdn\.com/[^"\s\\<>]+\.flv\?[^"\s\\<>]+)',
+        r'(https?://pull-flv-[a-z0-9-]+\.douyincdn\.com/[^"\s\\<>]+\.flv\?[^"\s\\<>]+)',
         decoded
     )
 
@@ -83,10 +87,10 @@ def check_douyin_live(url):
             return False, None, None
         return False, None, '未找到流地址, 可能未开播或需要Cookie'
 
-    # 找带sign参数的URL
-    signed_urls = [u for u in flv_urls if 'sign=' in u]
+    # 找带签名参数的URL (新版用k=, 旧版用sign=)
+    signed_urls = [u for u in flv_urls if 'sign=' in u or 'k=' in u]
     if signed_urls:
-        # 优先选原画流(or4)或默认流
+        # 优先选原画流(origin)或默认流(无后缀)
         best = None
         for u in signed_urls:
             if '_or4' in u or '_orig' in u:
@@ -94,6 +98,7 @@ def check_douyin_live(url):
                 break
         if not best:
             for u in signed_urls:
+                # 跳过低画质和纯音频流
                 if not any(s in u for s in ['_md', '_sd', '_hd', '_uhd', '_Stage', '_ld', 'only_audio']):
                     best = u
                     break
