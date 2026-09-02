@@ -353,3 +353,38 @@ input:checked + .slider:before { transform: translateX(18px); }
 .platform-logo-twitch { background-image: url('/static/img/platforms/twitch.svg'); }
 .platform-logo-youtube { background-image: url('/static/img/platforms/youtube.svg'); }
 .platform-logo-custom { background-image: none; }
+
+/* ─── 博主名称悬停提示气泡 ─── */
+.streamer-link {
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    cursor: pointer;
+    display: inline-block;
+    border-bottom: 1px dashed transparent;
+    transition: border-color 0.2s;
+}
+.streamer-link:hover {
+    border-bottom-color: var(--primary, #3b82f6);
+}
+.streamer-link::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 999;
+}
+.streamer-link:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-2px);
+}
