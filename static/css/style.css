@@ -326,7 +326,8 @@ input:checked + .slider:before { transform: translateX(18px); }
     background: var(--surface2);
 }
 
-/* ─── 平台Logo圆形图标 ─── */
+
+/* ─── 平台Logo (官方SVG) ─── */
 .platform-cell {
     display: flex;
     align-items: center;
@@ -334,114 +335,21 @@ input:checked + .slider:before { transform: translateX(18px); }
 }
 .platform-logo {
     display: inline-block;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
+    width: 18px;
+    height: 18px;
     flex-shrink: 0;
-    background-size: cover;
+    background-size: contain;
+    background-repeat: no-repeat;
     background-position: center;
+    vertical-align: middle;
 }
-/* 抖音 - 黑底 */
-.platform-logo-douyin {
-    background: #000;
-    position: relative;
-}
-.platform-logo-douyin::after {
-    content: '🎵';
-    position: absolute;
-    font-size: 11px;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-}
-/* 快手 - 橙色 */
-.platform-logo-kuaishou {
-    background: #FF4906;
-}
-.platform-logo-kuaishou::after {
-    content: '⚡';
-    color: #fff;
-    font-size: 11px;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-}
-/* B站 - 粉色 */
-.platform-logo-bilibili {
-    background: #FB7299;
-}
-.platform-logo-bilibili::after {
-    content: '📺';
-    font-size: 10px;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-}
-/* 虎牙 - 黄色 */
-.platform-logo-huya {
-    background: #F9C200;
-}
-.platform-logo-huya::after {
-    content: '🐯';
-    font-size: 10px;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-}
-/* 斗鱼 - 蓝色 */
-.platform-logo-douyu {
-    background: #17A2B8;
-}
-.platform-logo-douyu::after {
-    content: '🐟';
-    font-size: 10px;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-}
-/* YY - 红色 */
-.platform-logo-yy {
-    background: #E60012;
-}
-.platform-logo-yy::after {
-    content: 'YY';
-    color: #fff;
-    font-size: 8px;
-    font-weight: bold;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-}
-/* Twitch - 紫色 */
-.platform-logo-twitch {
-    background: #9146FF;
-}
-.platform-logo-twitch::after {
-    content: '🎮';
-    font-size: 10px;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-}
-/* YouTube - 红色 */
-.platform-logo-youtube {
-    background: #FF0000;
-}
-.platform-logo-youtube::after {
-    content: '▶';
-    color: #fff;
-    font-size: 9px;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-}
-/* 自定义 - 灰色 */
-.platform-logo-custom {
-    background: #6c757d;
-}
-.platform-logo-custom::after {
-    content: '🔗';
-    font-size: 10px;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%);
-}
+.platform-logo-douyin { background-image: url('/static/img/platforms/douyin.svg'); }
+[data-theme="dark"] .platform-logo-douyin { filter: invert(1); }
+.platform-logo-kuaishou { background-image: url('/static/img/platforms/kuaishou.svg'); }
+.platform-logo-bilibili { background-image: url('/static/img/platforms/bilibili.svg'); }
+.platform-logo-huya { background-image: url('/static/img/platforms/huya.svg'); }
+.platform-logo-douyu { background-image: url('/static/img/platforms/douyu.svg'); }
+.platform-logo-yy { background-image: url('/static/img/platforms/yy.svg'); }
+.platform-logo-twitch { background-image: url('/static/img/platforms/twitch.svg'); }
+.platform-logo-youtube { background-image: url('/static/img/platforms/youtube.svg'); }
+.platform-logo-custom { background-image: none; }

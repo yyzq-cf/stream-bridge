@@ -183,37 +183,3 @@ def get_streamer_info(url):
     except Exception as e:
         return {'name': '', 'live': False, 'error': str(e)}
 
-
-def get_streamer_info(url):
-    """获取虎牙博主信息(名称+直播状态)"""
-    proxy = get_proxy()
-    cookie = get_cookie('huya') or ''
-    room_id = url.split('?')[0].rstrip('/').rsplit('/', 1)[-1]
-    headers = {
-        'User-Agent': 'ios/7.830 (ios 17.0; ; iPhone 15 (A2846/A3089/A3090/A3092))',
-        'xweb_xhr': '1',
-        'referer': 'https://servicewechat.com/wx74767bf0b684f7d3/301/page-frame.html',
-        'accept-language': 'zh-CN,zh;q=0.9',
-    }
-    if cookie:
-        headers['Cookie'] = cookie
-    # 字母房间号需先转换
-    if any(c.isalpha() for c in room_id):
-        try:
-            html = http_get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0'}, proxy=proxy)
-            match = re.search(r'ProfileRoom":(.*?),"sPrivateHost', html)
-            if match:
-                room_id = match.group(1)
-        except:
-            pass
-    params = {'m': 'Live', 'do': 'profileRoom', 'roomid': room_id, 'showSecret': '1'}
-    api_url = f'https://mp.huya.com/cache.php?{urllib.parse.urlencode(params)}'
-    try:
-        resp = http_get(api_url, headers=headers, proxy=proxy)
-        json_data = json.loads(resp)
-        name = json_data['data']['profileInfo']['nick']
-        is_live = json_data['data']['realLiveStatus'] == 'ON'
-        return {'name': name, 'live': is_live, 'error': None}
-    except Exception as e:
-        return {'name': '', 'live': False, 'error': str(e)}
-

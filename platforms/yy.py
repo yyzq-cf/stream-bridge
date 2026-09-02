@@ -240,28 +240,3 @@ def get_streamer_info(url):
     except Exception as e:
         return {'name': '', 'live': False, 'error': str(e)}
 
-
-def get_streamer_info(url):
-    """获取YY博主信息(名称+直播状态)"""
-    proxy = get_proxy()
-    cookie = get_cookie('yy') or 'hd_newui=0.2103068903976506; hdjs_session_id=0.4929014850884579'
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
-        'Accept-Language': 'zh-CN,zh;q=0.8',
-        'Referer': 'https://www.yy.com/',
-        'Cookie': cookie,
-    }
-    try:
-        html = http_get(url, headers=headers, proxy=proxy, timeout=15)
-        if len(html) < 1000:
-            return {'name': '', 'live': False, 'error': '页面内容过少'}
-        name_match = re.search(r'nick:\s*"(.*?)"', html)
-        name = name_match.group(1) if name_match else ''
-        cid_match = re.search(r'sid\s*:\s*"(.*?)"', html, re.DOTALL)
-        if not cid_match:
-            return {'name': name, 'live': False, 'error': None}
-        # 有cid说明房间存在, 判断是否在直播需要调API
-        return {'name': name, 'live': False, 'error': None}
-    except Exception as e:
-        return {'name': '', 'live': False, 'error': str(e)}
-

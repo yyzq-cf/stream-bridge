@@ -142,32 +142,3 @@ def get_streamer_info(url):
     except Exception as e:
         return {'name': '', 'live': False, 'error': str(e)}
 
-
-def get_streamer_info(url):
-    """获取B站博主信息(名称+直播状态)"""
-    proxy = get_proxy()
-    cookie = get_cookie('bilibili') or ''
-    room_id = url.split('?')[0].rstrip('/').rsplit('/', 1)[-1]
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0',
-        'Accept-Language': 'zh-CN,zh;q=0.8',
-        'Referer': 'https://live.bilibili.com/',
-    }
-    if cookie:
-        headers['Cookie'] = cookie
-    try:
-        resp = http_get(f'https://api.live.bilibili.com/room/v1/Room/room_init?id={room_id}', headers=headers, proxy=proxy)
-        info = json.loads(resp)
-        if info.get('code') != 0:
-            return {'name': '', 'live': False, 'error': info.get('message', 'API错误')}
-        data = info['data']
-        uid = data['uid']
-        is_live = data.get('live_status') == 1
-        # 获取主播名
-        resp2 = http_get(f'https://api.live.bilibili.com/live_user/v1/Master/info?uid={uid}', headers=headers, proxy=proxy)
-        anchor = json.loads(resp2)
-        name = anchor.get('data', {}).get('info', {}).get('uname', '')
-        return {'name': name, 'live': is_live, 'error': None}
-    except Exception as e:
-        return {'name': '', 'live': False, 'error': str(e)}
-
