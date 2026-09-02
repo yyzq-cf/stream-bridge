@@ -5,26 +5,32 @@
 
 <div class="panel">
     <div class="panel-header">
-        <h2>快手 Cookie 配置</h2>
+        <h2>平台 Cookie 配置</h2>
     </div>
     <div class="panel-body">
         <p style="margin-bottom:12px;color:var(--text-dim);font-size:13px;">
-            快手对服务器IP有频率限制，配置Cookie可以绕过限制正常检测直播状态。<br>
+            部分平台(快手/斗鱼等)对服务器IP有频率限制，配置Cookie可以绕过限制。<br>
             <strong>获取方法：</strong><br>
-            1. 用浏览器打开任意快手直播间 <code>https://live.kuaishou.com/xxx</code><br>
+            1. 用浏览器打开对应平台直播间<br>
             2. 按 <kbd>F12</kbd> 打开开发者工具 → Network 标签<br>
             3. 刷新页面，点击第一个请求，找到 Request Headers 里的 <code>Cookie</code><br>
             4. 复制完整的Cookie值粘贴到下面
         </p>
-        <form id="cookie-form" style="margin-top:16px;" onsubmit="event.preventDefault(); saveCookie('kuaishou');">
-            <div class="form-group">
-                <label>快手 Cookie</label>
-                <textarea name="cookie" id="ks-cookie" class="form-control" rows="4"
-                    placeholder="粘贴快手Cookie，例如: clientid=3; did=web_xxx; kpf=PC_WEB; kpn=GAME_ZONE; ..."
-                    style="font-family:monospace;font-size:12px;">{{ kuaishou_cookie }}</textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">保存 Cookie</button>
-        </form>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px;">
+            {% for pkey, plabel in [('kuaishou', '快手'), ('douyu', '斗鱼'), ('bilibili', 'B站'), ('huya', '虎牙'), ('yy', 'YY')] %}
+            <form id="cookie-form-{{ pkey }}" onsubmit="event.preventDefault(); saveCookie('{{ pkey }}');">
+                <div class="form-group">
+                    <label>{{ plabel }} Cookie</label>
+                    <textarea name="cookie" id="{{ pkey }}-cookie" class="form-control" rows="3"
+                        placeholder="粘贴{{ plabel }}Cookie(可选)"
+                        style="font-family:monospace;font-size:12px;">{{ cookies.get(pkey, '') }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">保存</button>
+                <span id="{{ pkey }}-status" style="margin-left:8px;font-size:12px;"></span>
+            </form>
+            {% endfor %}
+        </div>
     </div>
 </div>
 
@@ -34,7 +40,7 @@
     </div>
     <div class="panel-body">
         <p style="margin-bottom:12px;color:var(--text-dim);font-size:13px;">
-            如果快手/抖音对服务器IP限流，可以配置代理绕过限制。<br>
+            如果平台对服务器IP限流，可以配置代理绕过限制。<br>
             支持HTTP和SOCKS5代理，留空则不使用代理。
         </p>
         <form id="proxy-form" style="margin-top:16px;" onsubmit="event.preventDefault(); saveProxy();">
@@ -48,4 +54,30 @@
         </form>
     </div>
 </div>
+
+<script>
+function saveCookie(platform) {
+    const cookie = document.getElementById(platform + '-cookie').value;
+    const status = document.getElementById(platform + '-status');
+    fetch('/settings/cookie', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `platform=${platform}&cookie=${encodeURIComponent(cookie)}`
+    }).then(r => r.json()).then(data => {
+        status.textContent = data.ok ? '✅ 已保存' : '❌ ' + data.message;
+        status.style.color = data.ok ? 'var(--success)' : 'var(--danger)';
+        setTimeout(() => status.textContent = '', 2000);
+    });
+}
+function saveProxy() {
+    const proxy = document.getElementById('proxy-input').value;
+    fetch('/settings/proxy', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `proxy=${encodeURIComponent(proxy)}`
+    }).then(r => r.json()).then(data => {
+        alert(data.ok ? '代理已保存' : '保存失败: ' + data.message);
+    });
+}
+</script>
 {% endblock %}

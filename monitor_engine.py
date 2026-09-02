@@ -27,17 +27,24 @@ def check_streamer_live(streamer):
     """
     url = _normalize_url(streamer.platform, streamer.room_id)
 
-    # 抖音: 用专用检测器(从页面提取FLV流)
-    if streamer.platform == 'douyin':
-        from platforms.douyin import check_douyin_live
-        return check_douyin_live(url)
+    # 各平台专用检测器(API方式)
+    platform_checkers = {
+        'douyin': 'platforms.douyin:check_douyin_live',
+        'kuaishou': 'platforms.kuaishou:check_kuaishou_live',
+        'bilibili': 'platforms.bilibili:check_bilibili_live',
+        'huya': 'platforms.huya:check_huya_live',
+        'douyu': 'platforms.douyu:check_douyu_live',
+        'yy': 'platforms.yy:check_yy_live',
+    }
 
-    # 快手: 用专用检测器(curl获取页面提取FLV流)
-    if streamer.platform == 'kuaishou':
-        from platforms.kuaishou import check_kuaishou_live
-        return check_kuaishou_live(url)
+    if streamer.platform in platform_checkers:
+        module_path, func_name = platform_checkers[streamer.platform].split(':')
+        import importlib
+        mod = importlib.import_module(module_path)
+        check_fn = getattr(mod, func_name)
+        return check_fn(url)
 
-    # 其他平台: 用yt-dlp
+    # 其他平台(twitch/youtube/custom): 用yt-dlp
     return _check_with_ytdlp(url)
 
 
@@ -94,13 +101,17 @@ def _normalize_url(platform, room_id):
         return room_id
 
     if platform == 'douyin':
-        # 抖音房间号 -> 完整URL
         return f'https://live.douyin.com/{room_id}'
     elif platform == 'kuaishou':
-        # 快手需要用户主页URL或分享链接
-        return f'https://www.kuaishou.com/profile/{room_id}'
+        return f'https://live.kuaishou.com/{room_id}'
     elif platform == 'bilibili':
         return f'https://live.bilibili.com/{room_id}'
+    elif platform == 'huya':
+        return f'https://www.huya.com/{room_id}'
+    elif platform == 'douyu':
+        return f'https://www.douyu.com/{room_id}'
+    elif platform == 'yy':
+        return f'https://www.yy.com/{room_id}'
     elif platform == 'twitch':
         return f'https://www.twitch.tv/{room_id}'
     elif platform == 'youtube':

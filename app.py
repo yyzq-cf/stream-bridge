@@ -554,11 +554,14 @@ def video_push_stats(tid):
 @login_required
 @admin_required
 def settings():
-    kuaishou_cookie = Setting.query.filter_by(key='kuaishou_cookie').first()
-    kuaishou_cookie = kuaishou_cookie.value if kuaishou_cookie else ''
+    # 读取所有平台Cookie
+    cookies = {}
+    for pkey in ['kuaishou', 'douyu', 'bilibili', 'huya', 'yy']:
+        s = Setting.query.filter_by(key=f'{pkey}_cookie').first()
+        cookies[pkey] = s.value if s else ''
     proxy = Setting.query.filter_by(key='proxy').first()
     proxy = proxy.value if proxy else ''
-    return render_template('settings.html', kuaishou_cookie=kuaishou_cookie, proxy=proxy)
+    return render_template('settings.html', cookies=cookies, proxy=proxy)
 
 
 @app.route('/settings/cookie', methods=['POST'])
