@@ -117,7 +117,7 @@ def _extract_rid(url):
     if match:
         return match.group(1)
     # 从路径提取
-    match = re.search(r'douyu\.com/(.*?)(?=\\?|$)', url)
+    match = re.search(r'douyu\.com/(.*?)(?=\?|$)', url)
     if match:
         return match.group(1)
     # 纯数字
@@ -166,31 +166,6 @@ def get_streamer_info(url):
 
         return {'name': name, 'live': live, 'error': None}
 
-    except Exception as e:
-        return {'name': '', 'live': False, 'error': str(e)}
-
-
-def get_streamer_info(url):
-    """获取斗鱼博主信息(名称+直播状态)"""
-    proxy = get_proxy()
-    cookie = get_cookie('douyu') or ''
-    rid = _extract_rid(url)
-    if not rid:
-        return {'name': '', 'live': False, 'error': '无法提取房间号'}
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
-        'Accept-Language': 'zh-CN,zh;q=0.8',
-        'Referer': f'https://www.douyu.com/{rid}',
-    }
-    if cookie:
-        headers['Cookie'] = cookie
-    try:
-        resp = http_get(f'https://www.douyu.com/betard/{rid}', headers=headers, proxy=proxy)
-        data = json.loads(resp)
-        room = data.get('room', {})
-        name = room.get('nickname', '')
-        is_live = room.get('videoLoop') == 0 and room.get('show_status') == 1
-        return {'name': name, 'live': is_live, 'error': None}
     except Exception as e:
         return {'name': '', 'live': False, 'error': str(e)}
 
