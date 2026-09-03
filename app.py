@@ -942,7 +942,11 @@ def qrcode_2fa():
     qr.make(fit=True)
     img = qr.make_image(fill_color='black', back_color='white')
     buf = io.BytesIO()
-    img.save(buf, format='PNG')
+    try:
+        img.save(buf, format='PNG')
+    except TypeError:
+        # qrcode 8.x PyPNGImage doesn't accept format kwarg
+        img.save(buf)
     buf.seek(0)
     return Response(buf.getvalue(), mimetype='image/png')
 
