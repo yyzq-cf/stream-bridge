@@ -53,7 +53,11 @@
                         </label>
                     </td>
                     <td class="action-buttons">
-                        <button class="btn btn-sm btn-info" onclick='editTarget({{ t.id }}, {{ t.name|tojson|e }}, {{ t.rtmp_url|tojson|e }}, {{ t.stream_key|tojson|e }}, {{ t.is_active|tojson|e }})'>编辑</button>
+                        <button class="btn btn-sm btn-info" onclick="editTarget({{ t.id }}, this)"
+                            data-name="{{ t.name }}"
+                            data-rtmp="{{ t.rtmp_url }}"
+                            data-key="{{ t.stream_key }}"
+                            data-active="{{ t.is_active }}">编辑</button>
                         <form method="POST" action="{{ url_for('delete_target', tid=t.id) }}" style="display:inline" onsubmit="return confirm('确定删除?')">
                             <button type="submit" class="btn btn-sm btn-danger">删除</button>
                         </form>
@@ -111,14 +115,14 @@ function hideKey(id) {
 }
 
 // 编辑弹窗
-function editTarget(id, name, rtmp, key, active) {
+function editTarget(id, btn) {
     document.getElementById('edit-form').action = '/targets/' + id + '/update';
-    document.getElementById('edit-name').value = name;
-    document.getElementById('edit-rtmp').value = rtmp;
-    document.getElementById('edit-key').value = key;
+    document.getElementById('edit-name').value = btn.dataset.name;
+    document.getElementById('edit-rtmp').value = btn.dataset.rtmp;
+    document.getElementById('edit-key').value = btn.dataset.key || '';
     document.getElementById('edit-key').type = 'password';
     document.getElementById('toggle-key-btn').textContent = '👁';
-    document.getElementById('edit-active').checked = active;
+    document.getElementById('edit-active').checked = btn.dataset.active === 'True';
     document.getElementById('edit-modal').style.display = 'flex';
 }
 
