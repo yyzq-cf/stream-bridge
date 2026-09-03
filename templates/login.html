@@ -96,6 +96,34 @@
             color: #a0aec0;
             font-size: 12px;
         }
+        /* ─── 2FA验证码输入框 ─── */
+        .totp-info {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #64748b;
+            font-size: 13px;
+        }
+        .totp-info .totp-icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+        }
+        .totp-input {
+            text-align: center;
+            letter-spacing: 6px;
+            font-size: 20px !important;
+            font-weight: 600;
+            font-family: monospace;
+        }
+        .totp-cancel {
+            text-align: center;
+            margin-top: 16px;
+        }
+        .totp-cancel a {
+            color: #a0aec0;
+            font-size: 13px;
+            text-decoration: none;
+        }
+        .totp-cancel a:hover { color: #6c5ce7; }
         @media (max-width: 480px) {
             .login-card { padding: 32px 24px; }
         }
@@ -113,6 +141,24 @@
             <div style="font-size:32px;margin-bottom:8px;">🔒</div>
             <p style="font-size:15px;font-weight:600;margin-bottom:4px;">账户已锁定</p>
             <p style="font-size:13px;color:#a0aec0;">请等待 {{ lock_time }} 秒后再试</p>
+        </div>
+        {% elif totp_required %}
+        <form method="POST" class="login-form">
+            <div class="totp-info">
+                <div class="totp-icon">🔐</div>
+                <p style="font-weight:600;color:#1a202c;margin-bottom:4px;">二步验证</p>
+                <p>请输入身份验证器App中的6位验证码</p>
+            </div>
+            <div class="form-group">
+                <input type="text" name="totp_code" class="totp-input" required autofocus
+                       placeholder="000000" maxlength="6" pattern="[0-9]{6}"
+                       inputmode="numeric" autocomplete="one-time-code"
+                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            </div>
+            <button type="submit">验 证</button>
+        </form>
+        <div class="totp-cancel">
+            <a href="{{ url_for('cancel_2fa') }}">← 返回重新登录</a>
         </div>
         {% else %}
         <form method="POST" class="login-form">

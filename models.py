@@ -14,12 +14,39 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # ─── 二步验证(2FA/TOTP) ───
+    totp_secret = db.Column(db.String(64), nullable=True)    # TOTP密钥(Base32)
+    totp_enabled = db.Column(db.Boolean, default=False)       # 是否已启用2FA
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def generate_totp_secret(self):
+        """生成新的TOTP密钥"""
+        import pyotp
+        self.totp_secret = pyotp.random_base32()
+        return self.totp_secret
+
+    def get_totp_uri(self, issuer='StreamBridge'):
+        """获取otpauth:// URI"""
+        import pyotp
+        if not self.totp_secret:
+            self.generate_totp_secret()
+        return pyotp.totp.TOTP(self.totp_secret).provisioning_uri(
+            name=self.username, issuer_name=issuer)
+
+    def verify_totp(self, code):
+        """验证TOTP验证码"""
+        import pyotp
+        if not self.totp_secret or not self.totp_enabled:
+            return True  # 未启用2FA, 放行
+        if not code:
+            return False
+        totp = pyotp.TOTP(self.totp_secret)
+        return totp.verify(code, valid_window=1)  # 允许前后各30秒
 
 
 class Streamer(db.Model):

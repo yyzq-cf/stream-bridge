@@ -124,15 +124,47 @@ def login():
             flash(f'登录尝试过多, 请 {lock_time} 秒后再试', 'error')
             return render_template('login.html', locked=True, lock_time=lock_time)
         
+        # ─── 2FA验证阶段 ───
+        totp_code = request.form.get('totp_code', '').strip()
+        if totp_code:
+            # 第二步: 验证TOTP
+            pending_user = session.pop('pending_2fa_user', None)
+            if not pending_user:
+                flash('2FA会话已过期, 请重新登录', 'error')
+                return redirect(url_for('login'))
+            user = User.query.get(pending_user)
+            if not user:
+                flash('用户不存在', 'error')
+                return redirect(url_for('login'))
+            if user.verify_totp(totp_code):
+                clear_login_attempts(client_ip)
+                login_user(user)
+                logger.info(f"2FA登录成功: {user.username} IP={client_ip}")
+                return redirect(url_for('dashboard'))
+            else:
+                record_failed_login(client_ip)
+                flash('验证码错误, 请重试', 'error')
+                return render_template('login.html', totp_required=True,
+                                       username=user.username)
+        
+        # ─── 第一步: 用户名+密码 ───
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         user = User.query.filter_by(username=username).first()
         
         if user and user.check_password(password):
             clear_login_attempts(client_ip)
-            login_user(user)
-            logger.info(f"登录成功: {username} IP={client_ip}")
-            return redirect(url_for('dashboard'))
+            # 检查是否启用了2FA
+            if user.totp_enabled:
+                # 存入session, 等待第二步验证
+                session['pending_2fa_user'] = user.id
+                logger.info(f"密码验证通过, 等待2FA: {username} IP={client_ip}")
+                return render_template('login.html', totp_required=True,
+                                       username=username)
+            else:
+                login_user(user)
+                logger.info(f"登录成功(无2FA): {username} IP={client_ip}")
+                return redirect(url_for('dashboard'))
         else:
             record_failed_login(client_ip)
             remaining = MAX_ATTEMPTS - len(login_attempts[client_ip])
@@ -146,6 +178,13 @@ def login():
     allowed, lock_time = check_login_rate(client_ip)
     locked = not allowed
     return render_template('login.html', locked=locked, lock_time=lock_time)
+
+
+@app.route('/login/cancel-2fa')
+def cancel_2fa():
+    """取消2FA登录流程"""
+    session.pop('pending_2fa_user', None)
+    return redirect(url_for('login'))
 
 
 @app.route('/logout')
@@ -818,6 +857,93 @@ def change_password():
     return jsonify({'ok': True, 'message': '密码修改成功'})
 
 
+# ─── 二步验证(2FA)管理 ───
+
+@app.route('/2fa/setup', methods=['GET', 'POST'])
+@login_required
+def setup_2fa():
+    """生成TOTP密钥并返回QR码"""
+    user = current_user
+    if not user.totp_secret:
+        user.generate_totp_secret()
+        db.session.commit()
+    
+    if request.method == 'GET':
+        # 返回otpauth URI供前端生成QR码
+        uri = user.get_totp_uri()
+        secret = user.totp_secret
+        # 分组展示密钥方便手动输入
+        formatted_secret = ' '.join([secret[i:i+4] for i in range(0, len(secret), 4)])
+        return jsonify({
+            'ok': True,
+            'secret': secret,
+            'formatted_secret': formatted_secret,
+            'uri': uri,
+            'enabled': user.totp_enabled
+        })
+    
+    # POST: 验证用户输入的验证码, 启用2FA
+    code = request.form.get('code', '').strip()
+    if not code:
+        return jsonify({'ok': False, 'message': '请输入验证码'})
+    
+    import pyotp
+    totp = pyotp.TOTP(user.totp_secret)
+    if totp.verify(code, valid_window=1):
+        user.totp_enabled = True
+        db.session.commit()
+        logger.info(f"2FA已启用: {user.username}")
+        return jsonify({'ok': True, 'message': '二步验证已启用'})
+    else:
+        return jsonify({'ok': False, 'message': '验证码错误, 请重试'})
+
+
+@app.route('/2fa/disable', methods=['POST'])
+@login_required
+def disable_2fa():
+    """关闭2FA, 需要验证当前验证码"""
+    user = current_user
+    code = request.form.get('code', '').strip()
+    if not user.totp_enabled:
+        return jsonify({'ok': False, 'message': '2FA未启用'})
+    if not code:
+        return jsonify({'ok': False, 'message': '请输入验证码'})
+    
+    import pyotp
+    totp = pyotp.TOTP(user.totp_secret)
+    if totp.verify(code, valid_window=1):
+        user.totp_enabled = False
+        user.totp_secret = None
+        db.session.commit()
+        logger.info(f"2FA已关闭: {user.username}")
+        return jsonify({'ok': True, 'message': '二步验证已关闭'})
+    else:
+        return jsonify({'ok': False, 'message': '验证码错误'})
+
+
+@app.route('/2fa/qrcode')
+@login_required
+def qrcode_2fa():
+    """生成QR码图片"""
+    import io
+    import qrcode
+    from flask import Response
+    
+    user = current_user
+    if user.totp_enabled:
+        return Response('2FA already enabled', status=400)
+    if not user.totp_secret:
+        user.generate_totp_secret()
+        db.session.commit()
+    uri = user.get_totp_uri()
+    
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return Response(buf.getvalue(), mimetype='image/png')
+
+
 # ─── API: 状态 ───
 
 @app.route('/api/stream-stats/<int:sid>')
@@ -950,8 +1076,23 @@ def _log(streamer_id, level, action, message):
 
 # ─── 启动 ───
 
+def migrate_db():
+    """数据库迁移: 为旧版数据库添加2FA字段"""
+    from sqlalchemy import inspect, text
+    inspector = inspect(db.engine)
+    cols = [c['name'] for c in inspector.get_columns('users')]
+    if 'totp_secret' not in cols:
+        db.session.execute(text('ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64)'))
+        logger.info("数据库迁移: 添加 users.totp_secret 列")
+    if 'totp_enabled' not in cols:
+        db.session.execute(text('ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN DEFAULT 0'))
+        logger.info("数据库迁移: 添加 users.totp_enabled 列")
+    db.session.commit()
+
+
 with app.app_context():
     db.create_all()
+    migrate_db()
     if not User.query.filter_by(username=Config.DEFAULT_ADMIN_USER).first():
         admin = User(username=Config.DEFAULT_ADMIN_USER, is_admin=True)
         admin.set_password(Config.DEFAULT_ADMIN_PASS)

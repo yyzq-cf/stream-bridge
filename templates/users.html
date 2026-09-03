@@ -20,7 +20,7 @@
     <div class="panel-body">
         <table class="table">
             <thead>
-                <tr><th>ID</th><th>用户名</th><th>角色</th><th>创建时间</th><th>操作</th></tr>
+                <tr><th>ID</th><th>用户名</th><th>角色</th><th>2FA</th><th>创建时间</th><th>操作</th></tr>
             </thead>
             <tbody>
                 {% for u in users %}
@@ -28,6 +28,7 @@
                     <td>{{ u.id }}</td>
                     <td>{{ u.username }}</td>
                     <td><span class="badge badge-{{ 'primary' if u.is_admin else 'secondary' }}">{{ '管理员' if u.is_admin else '普通用户' }}</span></td>
+                    <td>{% if u.totp_enabled %}<span class="badge badge-primary">已启用</span>{% else %}<span class="badge badge-secondary">未启用</span>{% endif %}</td>
                     <td>{{ u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '-' }}</td>
                     <td>
                         {% if u.id == current_user.id %}
