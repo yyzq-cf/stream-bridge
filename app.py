@@ -1228,8 +1228,32 @@ def download_recording(filename):
     """下载录制文件"""
     import os
     from flask import send_from_directory
-    record_dir = os.path.join(Config.DATA_DIR, 'recordings')
-    return send_from_directory(record_dir, filename, as_attachment=True)
+    record_dir = os.path.join(__import__('config').DATA_DIR, 'recordings')
+    # 中文文件名需要正确处理
+    from urllib.parse import unquote
+    filename = unquote(filename)
+    filepath = os.path.join(record_dir, filename)
+    if not os.path.exists(filepath):
+        from flask import abort
+        abort(404)
+    return send_from_directory(record_dir, filename, as_attachment=True,
+                              download_name=filename)
+
+
+@app.route('/recordings/<filename>/play')
+@login_required
+def play_recording(filename):
+    """在线播放录制文件(支持HTTP Range, 可拖动进度条)"""
+    import os
+    from flask import send_file
+    from urllib.parse import unquote
+    filename = unquote(filename)
+    record_dir = os.path.join(__import__('config').DATA_DIR, 'recordings')
+    filepath = os.path.join(record_dir, filename)
+    if not os.path.exists(filepath):
+        from flask import abort
+        abort(404)
+    return send_file(filepath, mimetype='video/mp4', conditional=True)
 
 
 @app.route('/recordings/<filename>', methods=['DELETE'])

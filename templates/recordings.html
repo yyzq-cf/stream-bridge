@@ -33,9 +33,10 @@
                         {% endif %}
                     </td>
                     <td class="action-buttons">
-                        <a href="/recordings/{{ f.filename }}/download" class="btn btn-sm btn-info">下载</a>
+                        <button class="btn btn-sm btn-primary" onclick="playFile('{{ f.filename|e }}')" title="在线播放">▶ 播放</button>
+                        <a href="/recordings/{{ f.filename|urlencode }}/download" class="btn btn-sm btn-info" target="_blank">下载</a>
                         {% if not f.recording %}
-                        <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ f.filename }}')">删除</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteFile('{{ f.filename|e }}')">删除</button>
                         {% endif %}
                     </td>
                 </tr>
@@ -48,10 +49,58 @@
     </div>
 </div>
 
+<!-- 视频播放器弹窗 -->
+<div class="modal" id="playerModal" style="display:none;">
+    <div class="modal-content" style="max-width:900px;padding:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 8px;">
+            <span id="player-title" style="font-size:14px;font-weight:600;"></span>
+            <button class="btn btn-sm" onclick="closePlayer()">✕ 关闭</button>
+        </div>
+        <video id="videoPlayer" controls autoplay style="width:100%;max-height:70vh;border-radius:8px;background:#000;"></video>
+        <div style="text-align:center;margin-top:8px;">
+            <a id="player-download" href="#" class="btn btn-sm btn-info" download>⬇ 下载此文件</a>
+        </div>
+    </div>
+</div>
+
 <script>
+function playFile(filename) {
+    const modal = document.getElementById('playerModal');
+    const player = document.getElementById('videoPlayer');
+    const title = document.getElementById('player-title');
+    const dl = document.getElementById('player-download');
+
+    const playUrl = '/recordings/' + encodeURIComponent(filename) + '/play';
+    const dlUrl = '/recordings/' + encodeURIComponent(filename) + '/download';
+
+    player.src = playUrl;
+    title.textContent = filename.length > 50 ? filename.substring(0, 50) + '...' : filename;
+    dl.href = dlUrl;
+    modal.style.display = 'flex';
+    player.play();
+}
+
+function closePlayer() {
+    const modal = document.getElementById('playerModal');
+    const player = document.getElementById('videoPlayer');
+    player.pause();
+    player.src = '';
+    modal.style.display = 'none';
+}
+
+// 点击遮罩关闭
+document.getElementById('playerModal').addEventListener('click', function(e) {
+    if (e.target === this) closePlayer();
+});
+
+// ESC关闭
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closePlayer();
+});
+
 function deleteFile(filename) {
     if (!confirm('确定删除 ' + filename + ' ?')) return;
-    fetch('/recordings/' + filename, {method: 'DELETE'})
+    fetch('/recordings/' + encodeURIComponent(filename), {method: 'DELETE'})
         .then(r => r.json()).then(data => {
             if (data.ok) location.reload();
             else alert(data.message || '删除失败');
