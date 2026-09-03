@@ -37,7 +37,9 @@
                     <td>{{ t.id }}</td>
                     <td>{{ t.name }}</td>
                     <td><code style="font-size:12px;word-break:break-all;">{{ t.rtmp_url }}</code></td>
-                    <td><code style="font-size:12px;">{{ t.stream_key[:8] }}••••••</code></td>
+                    <td>
+                        <code style="font-size:12px;word-break:break-all;" id="key-{{ t.id }}">{{ t.stream_key }}</code>
+                    </td>
                     <td>
                         <label class="switch">
                             <input type="checkbox" {{ 'checked' if t.is_active else '' }} disabled>
@@ -45,7 +47,7 @@
                         </label>
                     </td>
                     <td class="action-buttons">
-                        <button class="btn btn-sm btn-info" onclick="editTarget({{ t.id }}, '{{ t.name }}', '{{ t.rtmp_url }}')">编辑</button>
+                        <button class="btn btn-sm btn-info" onclick='editTarget({{ t.id }}, {{ t.name|tojson|e }}, {{ t.rtmp_url|tojson|e }}, {{ t.stream_key|tojson|e }}, {{ t.is_active|tojson|e }})'>编辑</button>
                         <form method="POST" action="{{ url_for('delete_target', tid=t.id) }}" style="display:inline" onsubmit="return confirm('确定删除?')">
                             <button type="submit" class="btn btn-sm btn-danger">删除</button>
                         </form>
@@ -62,7 +64,7 @@
 
 <div id="edit-modal" class="modal" style="display:none;">
     <div class="modal-content">
-        <h3>编辑推流目标</h3>
+        <h3>编辑推流目程</h3>
         <form method="POST" id="edit-form" style="margin-top:16px;">
             <div class="form-group">
                 <label>名称</label>
@@ -73,8 +75,12 @@
                 <input type="text" name="rtmp_url" id="edit-rtmp" class="form-control" required>
             </div>
             <div class="form-group">
-                <label>流密钥 (留空不改)</label>
-                <input type="text" name="stream_key" id="edit-key" class="form-control" placeholder="••••••">
+                <label>流密钥</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" name="stream_key" id="edit-key" class="form-control" style="flex:1">
+                    <button type="button" class="btn btn-sm" onclick="toggleKeyVisibility()" id="toggle-key-btn" title="显示/隐藏">👁</button>
+                </div>
+                <span style="font-size:11px;color:var(--text-dim);">留空则不修改</span>
             </div>
             <div class="form-group">
                 <label class="checkbox-label"><input type="checkbox" name="is_active" id="edit-active" checked> 启用</label>
@@ -86,4 +92,38 @@
         </form>
     </div>
 </div>
+
+<script>
+function editTarget(id, name, rtmp, key, active) {
+    document.getElementById('edit-form').action = '/targets/' + id + '/update';
+    document.getElementById('edit-name').value = name;
+    document.getElementById('edit-rtmp').value = rtmp;
+    document.getElementById('edit-key').value = key;
+    document.getElementById('edit-key').type = 'password';
+    document.getElementById('toggle-key-btn').textContent = '👁';
+    document.getElementById('edit-active').checked = active;
+    document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+}
+
+function toggleKeyVisibility() {
+    const input = document.getElementById('edit-key');
+    const btn = document.getElementById('toggle-key-btn');
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+});
+</script>
 {% endblock %}
+</content>
