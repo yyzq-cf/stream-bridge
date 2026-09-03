@@ -37,8 +37,14 @@
                     <td>{{ t.id }}</td>
                     <td>{{ t.name }}</td>
                     <td><code style="font-size:12px;word-break:break-all;">{{ t.rtmp_url }}</code></td>
-                    <td>
-                        <code style="font-size:12px;word-break:break-all;" id="key-{{ t.id }}">{{ t.stream_key }}</code>
+                    <td style="min-width:180px;">
+                        <span id="key-mask-{{ t.id }}" style="font-family:monospace;font-size:12px;cursor:pointer;" onclick="showKey({{ t.id }})" title="点击查看完整密钥">
+                            {{ t.stream_key[:6] }}•••••••• 👁
+                        </span>
+                        <span id="key-full-{{ t.id }}" style="font-family:monospace;font-size:12px;display:none;">
+                            <code style="word-break:break-all;">{{ t.stream_key }}</code>
+                            <a href="javascript:hideKey({{ t.id }})" style="font-size:11px;margin-left:4px;">🙈隐藏</a>
+                        </span>
                     </td>
                     <td>
                         <label class="switch">
@@ -64,7 +70,7 @@
 
 <div id="edit-modal" class="modal" style="display:none;">
     <div class="modal-content">
-        <h3>编辑推流目程</h3>
+        <h3>编辑推流目标</h3>
         <form method="POST" id="edit-form" style="margin-top:16px;">
             <div class="form-group">
                 <label>名称</label>
@@ -77,8 +83,8 @@
             <div class="form-group">
                 <label>流密钥</label>
                 <div style="display:flex;gap:8px;">
-                    <input type="text" name="stream_key" id="edit-key" class="form-control" style="flex:1">
-                    <button type="button" class="btn btn-sm" onclick="toggleKeyVisibility()" id="toggle-key-btn" title="显示/隐藏">👁</button>
+                    <input type="password" name="stream_key" id="edit-key" class="form-control" style="flex:1">
+                    <button type="button" class="btn btn-sm" onclick="toggleEditKey()" id="toggle-key-btn" title="显示/隐藏">👁</button>
                 </div>
                 <span style="font-size:11px;color:var(--text-dim);">留空则不修改</span>
             </div>
@@ -94,6 +100,17 @@
 </div>
 
 <script>
+// 列表密钥显示/隐藏
+function showKey(id) {
+    document.getElementById('key-mask-' + id).style.display = 'none';
+    document.getElementById('key-full-' + id).style.display = 'inline';
+}
+function hideKey(id) {
+    document.getElementById('key-full-' + id).style.display = 'none';
+    document.getElementById('key-mask-' + id).style.display = 'inline';
+}
+
+// 编辑弹窗
 function editTarget(id, name, rtmp, key, active) {
     document.getElementById('edit-form').action = '/targets/' + id + '/update';
     document.getElementById('edit-name').value = name;
@@ -109,7 +126,7 @@ function closeEditModal() {
     document.getElementById('edit-modal').style.display = 'none';
 }
 
-function toggleKeyVisibility() {
+function toggleEditKey() {
     const input = document.getElementById('edit-key');
     const btn = document.getElementById('toggle-key-btn');
     if (input.type === 'password') {
@@ -126,4 +143,3 @@ document.getElementById('edit-modal').addEventListener('click', function(e) {
 });
 </script>
 {% endblock %}
-</content>
