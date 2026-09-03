@@ -1085,6 +1085,9 @@ def api_server_stats():
     net_sent = _fmt_bytes(net.bytes_sent)
     net_recv = _fmt_bytes(net.bytes_recv)
 
+    # Swap
+    swap = psutil.swap_memory()
+
     return jsonify({
         'ok': True,
         'cpu': {
@@ -1105,6 +1108,13 @@ def api_server_stats():
             'total': disk.total,
             'used_str': _fmt_bytes(disk.used),
             'total_str': _fmt_bytes(disk.total),
+        },
+        'swap': {
+            'percent': swap.percent,
+            'used': swap.used,
+            'total': swap.total,
+            'used_str': _fmt_bytes(swap.used),
+            'total_str': _fmt_bytes(swap.total),
         },
         'load': {
             'load1': round(load1, 2),

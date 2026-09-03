@@ -89,6 +89,22 @@
                 </div>
                 <div class="gauge-sub" id="srv-disk-detail">-</div>
             </div>
+            <!-- Swap 圆环 -->
+            <div style="text-align:center;">
+                <div class="gauge-wrap">
+                    <svg class="gauge-svg" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--surface2)" stroke-width="10"/>
+                        <circle id="srv-swap-ring" cx="60" cy="60" r="50" fill="none" stroke="var(--warning)" stroke-width="10"
+                            stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"
+                            transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s ease,stroke 0.5s;"/>
+                    </svg>
+                    <div class="gauge-center">
+                        <div class="gauge-value" id="srv-swap-pct">-</div>
+                        <div class="gauge-label">Swap</div>
+                    </div>
+                </div>
+                <div class="gauge-sub" id="srv-swap-detail">-</div>
+            </div>
             <!-- 负载/运行时间 信息卡 -->
             <div style="min-width:160px;display:flex;flex-direction:column;justify-content:center;gap:12px;">
                 <div style="background:var(--surface2);border-radius:10px;padding:14px 18px;text-align:center;">
@@ -329,6 +345,18 @@ async function refreshServerStats() {
         // 硬盘
         setGauge('srv-disk-ring', 'srv-disk-pct', d.disk.percent, p => p > 90 ? 'var(--danger)' : p > 70 ? 'var(--warning)' : 'var(--info)');
         document.getElementById('srv-disk-detail').textContent = d.disk.used_str + ' / ' + d.disk.total_str;
+
+        // Swap
+        if (d.swap) {
+            setGauge('srv-swap-ring', 'srv-swap-pct', d.swap.percent, p => p > 80 ? 'var(--danger)' : p > 50 ? 'var(--warning)' : 'var(--success)');
+            const swapDetail = document.getElementById('srv-swap-detail');
+            if (d.swap.total > 0) {
+                swapDetail.textContent = d.swap.used_str + ' / ' + d.swap.total_str;
+            } else {
+                swapDetail.textContent = '未启用';
+                document.getElementById('srv-swap-pct').textContent = 'N/A';
+            }
+        }
 
         // 负载
         document.getElementById('srv-load').textContent = d.load.load1 + ' / ' + d.load.load5 + ' / ' + d.load.load15;
