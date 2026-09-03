@@ -34,12 +34,12 @@
                     <td>{{ t.name }}</td>
                     <td><code style="font-size:12px;word-break:break-all;">{{ t.rtmp_url }}</code></td>
                     <td style="min-width:180px;">
-                        <span id="km{{ t.id }}" style="font-family:monospace;font-size:12px;cursor:pointer;color:var(--primary);" onclick="document.getElementById('km{{ t.id }}').style.display='none';document.getElementById('kf{{ t.id }}').style.display='inline';" title="点击查看">
+                        <span id="km{{ t.id }}" style="font-family:monospace;font-size:12px;cursor:pointer;color:var(--primary);" onclick="document.getElementById('km{{ t.id }}').style.display='none';document.getElementById('kf{{ t.id }}').style.display='inline';return false;" title="点击查看">
                             {{ t.stream_key[:6] }}•••••• 👁
                         </span>
                         <span id="kf{{ t.id }}" style="font-family:monospace;font-size:12px;display:none;">
                             <code style="word-break:break-all;">{{ t.stream_key }}</code>
-                            <a href="javascript:document.getElementById('kf{{ t.id }}').style.display='none';document.getElementById('km{{ t.id }}').style.display='inline';" style="font-size:11px;margin-left:4px;">隐藏</a>
+                            <a href="#" onclick="document.getElementById('kf{{ t.id }}').style.display='none';document.getElementById('km{{ t.id }}').style.display='inline';return false;" style="font-size:11px;margin-left:4px;">隐藏</a>
                         </span>
                     </td>
                     <td>
