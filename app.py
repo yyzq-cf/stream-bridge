@@ -1015,11 +1015,82 @@ def api_server_stats():
     # 上传/下载网络速率 (差值计算)
     net = psutil.net_io_counters()
 
+    # 系统信息
+    import platform
+    import socket
+    import subprocess
+
+    # 操作系统
+    os_name = platform.platform()
+
+    # 内核版本
+    kernel = platform.release()
+
+    # CPU型号
+    cpu_model = ''
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                if line.startswith('model name'):
+                    cpu_model = line.split(':')[1].strip()
+                    break
+    except:
+        cpu_model = platform.processor() or '-'
+
+    # 主机名
+    hostname = socket.gethostname()
+
+    # 时区
+    timezone = os.environ.get('TZ', '')
+    if not timezone:
+        try:
+            with open('/etc/timezone', 'r') as f:
+                timezone = f.read().strip()
+        except:
+            pass
+    if not timezone or timezone == 'UTC':
+        try:
+            link = os.readlink('/etc/localtime')
+            if 'zoneinfo/' in link:
+                timezone = link.split('zoneinfo/')[-1]
+        except:
+            pass
+    if not timezone:
+        try:
+            r = subprocess.run(['date', '+%Z'], capture_output=True, text=True, timeout=5)
+            if r.stdout.strip():
+                timezone = r.stdout.strip()
+        except:
+            pass
+    if not timezone:
+        timezone = 'UTC'
+
+    # 服务器当前时间 (按时区)
+    from datetime import datetime, timezone as dt_tz
+    server_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # 网络 IP
+    public_ip = ''
+    local_ip = ''
+    try:
+        # 内网IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except:
+        pass
+
+    # 网络流量
+    net_sent = _fmt_bytes(net.bytes_sent)
+    net_recv = _fmt_bytes(net.bytes_recv)
+
     return jsonify({
         'ok': True,
         'cpu': {
             'percent': round(cpu_percent, 1),
             'cores': cpu_count,
+            'model': cpu_model,
         },
         'memory': {
             'percent': mem.percent,
@@ -1041,6 +1112,17 @@ def api_server_stats():
             'load15': round(load15, 2),
         },
         'uptime': _get_uptime(),
+        'system': {
+            'os': os_name,
+            'kernel': kernel,
+            'hostname': hostname,
+            'timezone': timezone,
+            'server_time': server_time,
+            'cpu_model': cpu_model,
+            'local_ip': local_ip,
+            'net_sent': net_sent,
+            'net_recv': net_recv,
+        },
     })
 
 

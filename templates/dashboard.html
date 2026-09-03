@@ -105,6 +105,39 @@
     </div>
 </div>
 
+<!-- 系统信息 -->
+<div class="panel" style="margin-bottom:20px;">
+    <div class="panel-header"><h2>📋 系统信息</h2></div>
+    <div class="panel-body">
+        <table class="table" style="font-size:13px;">
+            <tr>
+                <td style="color:var(--text-dim);width:140px;">操作系统</td>
+                <td id="srv-os">-</td>
+                <td style="color:var(--text-dim);width:140px;">主机名</td>
+                <td id="srv-hostname">-</td>
+            </tr>
+            <tr>
+                <td style="color:var(--text-dim);">CPU 型号</td>
+                <td id="srv-cpu-model">-</td>
+                <td style="color:var(--text-dim);">内核版本</td>
+                <td id="srv-kernel">-</td>
+            </tr>
+            <tr>
+                <td style="color:var(--text-dim);">时区</td>
+                <td id="srv-timezone">-</td>
+                <td style="color:var(--text-dim);">服务器时间</td>
+                <td id="srv-time">-</td>
+            </tr>
+            <tr>
+                <td style="color:var(--text-dim);">内网 IP</td>
+                <td id="srv-localip">-</td>
+                <td style="color:var(--text-dim);">网络流量</td>
+                <td id="srv-net">-</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
 <div class="dashboard-grid">
     <div class="panel">
         <div class="panel-header">
@@ -300,6 +333,18 @@ async function refreshServerStats() {
         // 负载
         document.getElementById('srv-load').textContent = d.load.load1 + ' / ' + d.load.load5 + ' / ' + d.load.load15;
         document.getElementById('srv-uptime').textContent = d.uptime;
+
+        // 系统信息
+        if (d.system) {
+            document.getElementById('srv-os').textContent = d.system.os;
+            document.getElementById('srv-hostname').textContent = d.system.hostname;
+            document.getElementById('srv-cpu-model').textContent = d.system.cpu_model;
+            document.getElementById('srv-kernel').textContent = d.system.kernel;
+            document.getElementById('srv-timezone').textContent = d.system.timezone;
+            document.getElementById('srv-time').textContent = d.system.server_time;
+            document.getElementById('srv-localip').textContent = d.system.local_ip || '-';
+            document.getElementById('srv-net').textContent = '↑ ' + d.system.net_sent + ' / ↓ ' + d.system.net_recv;
+        }
     } catch(e) {}
 }
 refreshServerStats();
