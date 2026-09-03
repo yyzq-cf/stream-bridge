@@ -4,9 +4,7 @@
 <h1 class="page-title">推流目标管理</h1>
 
 <div class="panel">
-    <div class="panel-header">
-        <h2>添加推流目标</h2>
-    </div>
+    <div class="panel-header"><h2>添加推流目标</h2></div>
     <div class="panel-body">
         <form method="POST" action="{{ url_for('add_target') }}" class="form-inline">
             <input type="text" name="name" class="form-control" placeholder="目标名称 (如: YouTube主频道)" required>
@@ -22,9 +20,7 @@
 </div>
 
 <div class="panel">
-    <div class="panel-header">
-        <h2>目标列表 ({{ targets|length }})</h2>
-    </div>
+    <div class="panel-header"><h2>目标列表 ({{ targets|length }})</h2></div>
     <div class="panel-body">
         {% if targets %}
         <table class="table">
@@ -38,12 +34,12 @@
                     <td>{{ t.name }}</td>
                     <td><code style="font-size:12px;word-break:break-all;">{{ t.rtmp_url }}</code></td>
                     <td style="min-width:180px;">
-                        <span id="key-mask-{{ t.id }}" style="font-family:monospace;font-size:12px;cursor:pointer;" onclick="showKey({{ t.id }})" title="点击查看完整密钥">
-                            {{ t.stream_key[:6] }}•••••••• 👁
+                        <span id="km{{ t.id }}" style="font-family:monospace;font-size:12px;cursor:pointer;color:var(--primary);" onclick="document.getElementById('km{{ t.id }}').style.display='none';document.getElementById('kf{{ t.id }}').style.display='inline';" title="点击查看">
+                            {{ t.stream_key[:6] }}•••••• 👁
                         </span>
-                        <span id="key-full-{{ t.id }}" style="font-family:monospace;font-size:12px;display:none;">
+                        <span id="kf{{ t.id }}" style="font-family:monospace;font-size:12px;display:none;">
                             <code style="word-break:break-all;">{{ t.stream_key }}</code>
-                            <a href="javascript:hideKey({{ t.id }})" style="font-size:11px;margin-left:4px;">🙈隐藏</a>
+                            <a href="javascript:document.getElementById('kf{{ t.id }}').style.display='none';document.getElementById('km{{ t.id }}').style.display='inline';" style="font-size:11px;margin-left:4px;">隐藏</a>
                         </span>
                     </td>
                     <td>
@@ -53,11 +49,7 @@
                         </label>
                     </td>
                     <td class="action-buttons">
-                        <button class="btn btn-sm btn-info" onclick="editTarget({{ t.id }}, this)"
-                            data-name="{{ t.name }}"
-                            data-rtmp="{{ t.rtmp_url }}"
-                            data-key="{{ t.stream_key }}"
-                            data-active="{{ t.is_active }}">编辑</button>
+                        <button class="btn btn-sm btn-info" onclick="editTarget({{ t.id }})">编辑</button>
                         <form method="POST" action="{{ url_for('delete_target', tid=t.id) }}" style="display:inline" onsubmit="return confirm('确定删除?')">
                             <button type="submit" class="btn btn-sm btn-danger">删除</button>
                         </form>
@@ -72,31 +64,38 @@
     </div>
 </div>
 
+<!-- 隐藏的数据容器，用 data-* 属性存储，避免 JS 引号转义问题 -->
+<div id="target-data" style="display:none;">
+{% for t in targets %}
+    <span data-id="{{ t.id }}" data-name="{{ t.name }}" data-rtmp="{{ t.rtmp_url }}" data-key="{{ t.stream_key }}" data-active="{{ t.is_active }}"></span>
+{% endfor %}
+</div>
+
 <div id="edit-modal" class="modal" style="display:none;">
     <div class="modal-content">
         <h3>编辑推流目标</h3>
         <form method="POST" id="edit-form" style="margin-top:16px;">
             <div class="form-group">
                 <label>名称</label>
-                <input type="text" name="name" id="edit-name" class="form-control" required>
+                <input type="text" name="name" id="ef-name" class="form-control" required>
             </div>
             <div class="form-group">
                 <label>RTMP地址</label>
-                <input type="text" name="rtmp_url" id="edit-rtmp" class="form-control" required>
+                <input type="text" name="rtmp_url" id="ef-rtmp" class="form-control" required>
             </div>
             <div class="form-group">
                 <label>流密钥</label>
                 <div style="display:flex;gap:8px;">
-                    <input type="password" name="stream_key" id="edit-key" class="form-control" style="flex:1">
-                    <button type="button" class="btn btn-sm" onclick="toggleEditKey()" id="toggle-key-btn" title="显示/隐藏">👁</button>
+                    <input type="password" name="stream_key" id="ef-key" class="form-control" style="flex:1">
+                    <button type="button" class="btn btn-sm" onclick="var e=document.getElementById('ef-key');var b=this;if(e.type==='password'){e.type='text';b.textContent='🙈';}else{e.type='password';b.textContent='👁';}" title="显示/隐藏">👁</button>
                 </div>
                 <span style="font-size:11px;color:var(--text-dim);">留空则不修改</span>
             </div>
             <div class="form-group">
-                <label class="checkbox-label"><input type="checkbox" name="is_active" id="edit-active" checked> 启用</label>
+                <label class="checkbox-label"><input type="checkbox" name="is_active" id="ef-active" checked> 启用</label>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn" onclick="closeEditModal()">取消</button>
+                <button type="button" class="btn" onclick="document.getElementById('edit-modal').style.display='none';">取消</button>
                 <button type="submit" class="btn btn-primary">保存</button>
             </div>
         </form>
@@ -104,46 +103,20 @@
 </div>
 
 <script>
-// 列表密钥显示/隐藏
-function showKey(id) {
-    document.getElementById('key-mask-' + id).style.display = 'none';
-    document.getElementById('key-full-' + id).style.display = 'inline';
-}
-function hideKey(id) {
-    document.getElementById('key-full-' + id).style.display = 'none';
-    document.getElementById('key-mask-' + id).style.display = 'inline';
-}
-
-// 编辑弹窗
-function editTarget(id, btn) {
+function editTarget(id) {
+    var data = document.querySelector('#target-data span[data-id="' + id + '"]');
+    if (!data) return;
     document.getElementById('edit-form').action = '/targets/' + id + '/update';
-    document.getElementById("edit-name").value = btn.getAttribute("data-name");
-    document.getElementById("edit-rtmp").value = btn.getAttribute("data-rtmp");
-    document.getElementById("edit-key").value = btn.getAttribute("data-key") || '';
-    document.getElementById('edit-key').type = 'password';
-    document.getElementById('toggle-key-btn').textContent = '👁';
-    document.getElementById('edit-active').checked = btn.getAttribute("data-active") === "True";
+    document.getElementById('ef-name').value = data.getAttribute('data-name');
+    document.getElementById('ef-rtmp').value = data.getAttribute('data-rtmp');
+    document.getElementById('ef-key').value = data.getAttribute('data-key') || '';
+    document.getElementById('ef-key').type = 'password';
+    document.getElementById('ef-active').checked = data.getAttribute('data-active') === 'True';
     document.getElementById('edit-modal').style.display = 'flex';
 }
 
-function closeEditModal() {
-    document.getElementById('edit-modal').style.display = 'none';
-}
-
-function toggleEditKey() {
-    const input = document.getElementById('edit-key');
-    const btn = document.getElementById('toggle-key-btn');
-    if (input.type === 'password') {
-        input.type = 'text';
-        btn.textContent = '🙈';
-    } else {
-        input.type = 'password';
-        btn.textContent = '👁';
-    }
-}
-
 document.getElementById('edit-modal').addEventListener('click', function(e) {
-    if (e.target === this) closeEditModal();
+    if (e.target === this) this.style.display = 'none';
 });
 </script>
 {% endblock %}
