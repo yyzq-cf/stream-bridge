@@ -73,22 +73,6 @@
                 </div>
                 <div class="gauge-sub" id="srv-mem-detail">-</div>
             </div>
-            <!-- 硬盘 圆环 -->
-            <div style="text-align:center;">
-                <div class="gauge-wrap">
-                    <svg class="gauge-svg" viewBox="0 0 120 120">
-                        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--surface2)" stroke-width="10"/>
-                        <circle id="srv-disk-ring" cx="60" cy="60" r="50" fill="none" stroke="var(--info)" stroke-width="10"
-                            stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"
-                            transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s ease,stroke 0.5s;"/>
-                    </svg>
-                    <div class="gauge-center">
-                        <div class="gauge-value" id="srv-disk-pct">-</div>
-                        <div class="gauge-label">硬盘</div>
-                    </div>
-                </div>
-                <div class="gauge-sub" id="srv-disk-detail">-</div>
-            </div>
             <!-- Swap 圆环 -->
             <div style="text-align:center;">
                 <div class="gauge-wrap">
@@ -104,6 +88,22 @@
                     </div>
                 </div>
                 <div class="gauge-sub" id="srv-swap-detail">-</div>
+            </div>
+            <!-- 硬盘 圆环 -->
+            <div style="text-align:center;">
+                <div class="gauge-wrap">
+                    <svg class="gauge-svg" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--surface2)" stroke-width="10"/>
+                        <circle id="srv-disk-ring" cx="60" cy="60" r="50" fill="none" stroke="var(--info)" stroke-width="10"
+                            stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"
+                            transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 1s ease,stroke 0.5s;"/>
+                    </svg>
+                    <div class="gauge-center">
+                        <div class="gauge-value" id="srv-disk-pct">-</div>
+                        <div class="gauge-label">硬盘</div>
+                    </div>
+                </div>
+                <div class="gauge-sub" id="srv-disk-detail">-</div>
             </div>
             <!-- 负载/运行时间 信息卡 -->
             <div style="min-width:160px;display:flex;flex-direction:column;justify-content:center;gap:12px;">
