@@ -117,12 +117,12 @@ function hideKey(id) {
 // 编辑弹窗
 function editTarget(id, btn) {
     document.getElementById('edit-form').action = '/targets/' + id + '/update';
-    document.getElementById('edit-name').value = btn.dataset.name;
-    document.getElementById('edit-rtmp').value = btn.dataset.rtmp;
-    document.getElementById('edit-key').value = btn.dataset.key || '';
+    document.getElementById("edit-name").value = btn.getAttribute("data-name");
+    document.getElementById("edit-rtmp").value = btn.getAttribute("data-rtmp");
+    document.getElementById("edit-key").value = btn.getAttribute("data-key") || '';
     document.getElementById('edit-key').type = 'password';
     document.getElementById('toggle-key-btn').textContent = '👁';
-    document.getElementById('edit-active').checked = btn.dataset.active === 'True';
+    document.getElementById('edit-active').checked = btn.getAttribute("data-active") === "True";
     document.getElementById('edit-modal').style.display = 'flex';
 }
 
