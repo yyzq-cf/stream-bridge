@@ -989,6 +989,85 @@ def api_monitor_interval():
     return jsonify({'ok': True, 'interval': get_interval()})
 
 
+@app.route('/api/server-stats')
+@login_required
+def api_server_stats():
+    """服务器资源占用: CPU/内存/硬盘/负载"""
+    import psutil
+    import shutil
+
+    # CPU
+    cpu_percent = psutil.cpu_percent(interval=0.5)
+    cpu_count = psutil.cpu_count()
+
+    # 内存
+    mem = psutil.virtual_memory()
+
+    # 硬盘 (数据目录所在分区)
+    disk = shutil.disk_usage('/')
+
+    # 负载
+    try:
+        load1, load5, load15 = os.getloadavg()
+    except:
+        load1 = load5 = load15 = 0
+
+    # 上传/下载网络速率 (差值计算)
+    net = psutil.net_io_counters()
+
+    return jsonify({
+        'ok': True,
+        'cpu': {
+            'percent': round(cpu_percent, 1),
+            'cores': cpu_count,
+        },
+        'memory': {
+            'percent': mem.percent,
+            'used': mem.used,
+            'total': mem.total,
+            'used_str': _fmt_bytes(mem.used),
+            'total_str': _fmt_bytes(mem.total),
+        },
+        'disk': {
+            'percent': round(disk.used / disk.total * 100, 1),
+            'used': disk.used,
+            'total': disk.total,
+            'used_str': _fmt_bytes(disk.used),
+            'total_str': _fmt_bytes(disk.total),
+        },
+        'load': {
+            'load1': round(load1, 2),
+            'load5': round(load5, 2),
+            'load15': round(load15, 2),
+        },
+        'uptime': _get_uptime(),
+    })
+
+
+def _fmt_bytes(b):
+    """格式化字节数"""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if abs(b) < 1024:
+            return f'{b:.1f} {unit}'
+        b /= 1024
+    return f'{b:.1f} PB'
+
+
+def _get_uptime():
+    """获取系统运行时间"""
+    try:
+        with open('/proc/uptime', 'r') as f:
+            seconds = float(f.readline().split()[0])
+        d, rem = divmod(int(seconds), 86400)
+        h, rem = divmod(rem, 3600)
+        m, s = divmod(rem, 60)
+        if d > 0:
+            return f'{d}天{h}时{m}分'
+        return f'{h}时{m}分'
+    except:
+        return '-'
+
+
 @app.route('/api/status')
 @login_required
 def api_status():

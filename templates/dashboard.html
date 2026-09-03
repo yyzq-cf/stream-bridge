@@ -36,6 +36,58 @@
     </div>
 </div>
 
+<!-- 服务器资源状态 -->
+<div class="panel" style="margin-bottom:20px;">
+    <div class="panel-header"><h2>🖥️ 服务器状态</h2></div>
+    <div class="panel-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+            <!-- CPU -->
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-size:13px;color:var(--text-dim);">CPU</span>
+                    <span style="font-size:13px;font-weight:700;" id="srv-cpu-pct">-</span>
+                </div>
+                <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;">
+                    <div id="srv-cpu-bar" style="height:100%;width:0%;border-radius:4px;background:var(--primary);transition:width 1s;"></div>
+                </div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:4px;" id="srv-cpu-cores">- 核</div>
+            </div>
+            <!-- 内存 -->
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-size:13px;color:var(--text-dim);">内存</span>
+                    <span style="font-size:13px;font-weight:700;" id="srv-mem-pct">-</span>
+                </div>
+                <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;">
+                    <div id="srv-mem-bar" style="height:100%;width:0%;border-radius:4px;background:var(--success);transition:width 1s;"></div>
+                </div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:4px;" id="srv-mem-detail">-</div>
+            </div>
+            <!-- 硬盘 -->
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-size:13px;color:var(--text-dim);">硬盘</span>
+                    <span style="font-size:13px;font-weight:700;" id="srv-disk-pct">-</span>
+                </div>
+                <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;">
+                    <div id="srv-disk-bar" style="height:100%;width:0%;border-radius:4px;background:var(--info);transition:width 1s;"></div>
+                </div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:4px;" id="srv-disk-detail">-</div>
+            </div>
+            <!-- 负载/运行时间 -->
+            <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-size:13px;color:var(--text-dim);">系统负载</span>
+                    <span style="font-size:13px;font-weight:700;" id="srv-load">-</span>
+                </div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">
+                    <span id="srv-uptime">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="dashboard-grid">
     <div class="panel">
         <div class="panel-header">
@@ -195,5 +247,41 @@ if (document.querySelectorAll('[id^="active-vp-"]').length > 0) {
     setInterval(refreshVPStats, 3000);
     refreshVPStats();
 }
+
+// 服务器状态刷新
+async function refreshServerStats() {
+    try {
+        const resp = await fetch('/api/server-stats');
+        const d = await resp.json();
+        if (!d.ok) return;
+
+        // CPU
+        document.getElementById('srv-cpu-pct').textContent = d.cpu.percent + '%';
+        document.getElementById('srv-cpu-bar').style.width = d.cpu.percent + '%';
+        document.getElementById('srv-cpu-cores').textContent = d.cpu.cores + ' 核';
+        const cpuBar = document.getElementById('srv-cpu-bar');
+        cpuBar.style.background = d.cpu.percent > 80 ? 'var(--danger)' : d.cpu.percent > 60 ? 'var(--warning)' : 'var(--primary)';
+
+        // 内存
+        document.getElementById('srv-mem-pct').textContent = d.memory.percent.toFixed(1) + '%';
+        document.getElementById('srv-mem-bar').style.width = d.memory.percent + '%';
+        document.getElementById('srv-mem-detail').textContent = d.memory.used_str + ' / ' + d.memory.total_str;
+        const memBar = document.getElementById('srv-mem-bar');
+        memBar.style.background = d.memory.percent > 80 ? 'var(--danger)' : d.memory.percent > 60 ? 'var(--warning)' : 'var(--success)';
+
+        // 硬盘
+        document.getElementById('srv-disk-pct').textContent = d.disk.percent + '%';
+        document.getElementById('srv-disk-bar').style.width = d.disk.percent + '%';
+        document.getElementById('srv-disk-detail').textContent = d.disk.used_str + ' / ' + d.disk.total_str;
+        const diskBar = document.getElementById('srv-disk-bar');
+        diskBar.style.background = d.disk.percent > 90 ? 'var(--danger)' : d.disk.percent > 70 ? 'var(--warning)' : 'var(--info)';
+
+        // 负载
+        document.getElementById('srv-load').textContent = d.load.load1 + ' / ' + d.load.load5 + ' / ' + d.load.load15;
+        document.getElementById('srv-uptime').textContent = '⏱ 运行: ' + d.uptime;
+    } catch(e) {}
+}
+refreshServerStats();
+setInterval(refreshServerStats, 3000);
 </script>
 {% endblock %}
