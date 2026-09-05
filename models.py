@@ -65,7 +65,7 @@ class Streamer(db.Model):
     # 绑定推流目标
     push_target_id = db.Column(db.Integer, db.ForeignKey('push_targets.id'), nullable=True)
 
-    active_streams = db.relationship('ActiveStream', backref='streamer', lazy='dynamic')
+    active_streams = db.relationship('ActiveStream', backref='streamer', lazy='dynamic', cascade='all, delete-orphan')
     logs = db.relationship('StreamLog', backref='streamer', lazy='dynamic')
     push_target = db.relationship('PushTarget', backref='streamers')
 
