@@ -42,17 +42,43 @@
 - **Docker双平台**：支持 amd64 + arm64
 - **GitHub Actions CI**：push代码自动构建推送到Docker Hub
 - **docker compose**：一键启动，数据持久化
-## ✨ WEB界面
-### 仪表盘
-![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/001.png)
-### 博主列表
-![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/002.png)
-### 推流目标
-![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/003.png)
-### 视频文件推流
-![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/004.png)
-### 录制文件
-![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/005.png)
+## 📸 界面截图
+
+<table>
+  <tr>
+    <td width="50%" align="center"><b>仪表盘</b></td>
+    <td width="50%" align="center"><b>博主管理</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/001.png" alt="仪表盘" width="100%"></td>
+    <td><img src="docs/screenshots/002.png" alt="博主管理" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center">博主/直播/推流统计 + 服务器状态圆环仪表盘（CPU/内存/硬盘）</td>
+    <td align="center">多平台博主列表 + 自动识别名称 + 检测/推流/录制操作</td>
+  </tr>
+  <tr>
+    <td align="center"><b>推流目标管理</b></td>
+    <td align="center"><b>视频文件推流</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/003.png" alt="推流目标管理" width="100%"></td>
+    <td><img src="docs/screenshots/004.png" alt="视频文件推流" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center">RTMP推流地址 + 流密钥配置，支持多目标绑定</td>
+    <td align="center">本地文件/在线直链/目录循环推流 + 实时进度条</td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><b>录制文件</b></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/005.png" alt="录制文件" width="100%"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">录制文件在线播放 / 下载 / 删除</td>
+  </tr>
+</table>
 
 ## 🚀 快速开始
 
