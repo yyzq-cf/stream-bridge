@@ -42,6 +42,17 @@
 - **Docker双平台**：支持 amd64 + arm64
 - **GitHub Actions CI**：push代码自动构建推送到Docker Hub
 - **docker compose**：一键启动，数据持久化
+## ✨ WEB界面
+### 仪表盘
+![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/001.png)
+### 博主列表
+![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/002.png)
+### 推流目标
+![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/003.png)
+### 视频文件推流
+![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/004.png)
+### 录制文件
+![](https://raw.githubusercontent.com/yyzq-cf/stream-bridge/refs/heads/main/docs/screenshots/005.png)
 
 ## 🚀 快速开始
 
