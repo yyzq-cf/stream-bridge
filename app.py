@@ -82,8 +82,38 @@ def get_client_ip():
     """获取客户端IP"""
     return request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr or '').split(',')[0].strip()
 
+# ─── 版本号(按日期+当日修改次数) ───
+import os as _os
+_VERSION_FILE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'data', '.version')
+_VERSION_DATE = datetime.now().strftime('%Y%m%d')
+
+def _get_version():
+    """获取版本号: vYYYYMMDD-N, 每次重启自动递增当日次数"""
+    try:
+        with open(_VERSION_FILE, 'r') as f:
+            v = f.read().strip()
+        if v.startswith(f'v{_VERSION_DATE}-'):
+            n = int(v.split('-')[1]) + 1
+        else:
+            n = 1
+    except:
+        n = 1
+    version = f'v{_VERSION_DATE}-{n}'
+    try:
+        with open(_VERSION_FILE, 'w') as f:
+            f.write(version)
+    except:
+        pass
+    return version
+
+VERSION = _get_version()
+
 app = Flask(__name__)
 app.config.from_object(Config)
+
+@app.context_processor
+def inject_version():
+    return {'version': VERSION}
 db.init_app(app)
 
 login_manager = LoginManager()
@@ -478,26 +508,16 @@ def video_push_add():
     if not name or not target_id:
         return jsonify({'ok': False, 'message': '名称和推流目标不能为空'})
 
-    if not file_path and not source_url:
-        return jsonify({'ok': False, 'message': '请上传文件或填写在线视频URL'})
-
-    if file_path:
-        import os
-        if not os.path.exists(file_path):
-            return jsonify({'ok': False, 'message': '视频文件不存在'})
-        source_type = 'file'
-    else:
-        source_type = 'url'
-
-    # 目录模式
+    # 判断来源类型
+    source_type = request.form.get('source_type', 'file').strip()
     directory = request.form.get('directory', '').strip()
+
     if source_type == 'directory':
         if not directory:
             return jsonify({'ok': False, 'message': '请填写目录路径'})
         import os, json
         if not os.path.isdir(directory):
             return jsonify({'ok': False, 'message': '目录不存在'})
-        # 扫描目录下所有视频文件
         video_exts = ('.mp4', '.mkv', '.flv', '.avi', '.mov', '.ts', '.webm', '.m4v')
         files = []
         for f_name in sorted(os.listdir(directory)):
@@ -507,6 +527,15 @@ def video_push_add():
             return jsonify({'ok': False, 'message': '目录中没有视频文件'})
         file_path = json.dumps(files)
         source_url = None
+    elif source_type == 'url':
+        if not source_url:
+            return jsonify({'ok': False, 'message': '请填写在线视频URL'})
+    else:  # file
+        if not file_path:
+            return jsonify({'ok': False, 'message': '请上传文件'})
+        import os
+        if not os.path.exists(file_path):
+            return jsonify({'ok': False, 'message': '视频文件不存在'})
 
     task = VideoPush(
         name=name,
@@ -548,6 +577,29 @@ def video_push_edit(tid):
     return jsonify({'ok': True, 'message': f'任务 {task.name} 已更新'})
 
 
+
+
+@app.route('/video-push/scan-dir', methods=['POST'])
+@login_required
+def video_push_scan_dir():
+    """扫描目录下的视频文件"""
+    import os
+    directory = request.json.get('directory', '').strip() if request.is_json else request.form.get('directory', '').strip()
+    if not directory:
+        return jsonify({'ok': False, 'message': '请输入目录路径'})
+    if not os.path.isdir(directory):
+        return jsonify({'ok': False, 'message': f'目录不存在: {directory}'})
+    video_exts = ('.mp4', '.mkv', '.flv', '.avi', '.mov', '.ts', '.webm', '.m4v')
+    files = [f for f in sorted(os.listdir(directory)) if f.lower().endswith(video_exts)]
+    file_paths = [os.path.join(directory, f) for f in files]
+    return jsonify({
+        'ok': True,
+        'count': len(files),
+        'files': files,
+        'file_paths': file_paths
+    })
+
+
 @app.route('/video-push/<int:tid>/delete', methods=['POST'])
 @login_required
 def video_push_delete(tid):
@@ -577,6 +629,19 @@ def video_push_stop(tid):
     from video_engine import stop_video_push
     stop_video_push(tid)
     return jsonify({'ok': True, 'message': '推流已停止'})
+
+
+@app.route('/video-push/<int:tid>/control', methods=['POST'])
+@login_required
+def video_push_control(tid):
+    """目录推流控制: 上一个/下一个/顺序/随机"""
+    from video_engine import control_video_push, play_controls
+    action = request.json.get('action', '') if request.is_json else request.form.get('action', '')
+    mode = request.json.get('mode', '') if request.is_json else request.form.get('mode', '')
+    ok, msg = control_video_push(tid, action, mode or None)
+    # 返回当前模式
+    ctrl = play_controls.get(tid, {})
+    return jsonify({'ok': ok, 'message': msg, 'mode': ctrl.get('mode', 'sequential')})
 
 
 @app.route('/api/video-push/stats/<int:tid>')
@@ -628,7 +693,21 @@ def video_push_stats(tid):
         elif bps > 1_000: return f'{bps/1_000:.0f} kbps'
         else: return f'{bps} bps'
 
+    # 目录模式: 获取当前播放文件名和模式
+    play_mode = 'sequential'
+    if task.source_type == 'directory':
+        try:
+            from video_engine import current_files, play_controls
+            current_file = current_files.get(tid)
+            ctrl = play_controls.get(tid, {})
+            play_mode = ctrl.get('mode', 'sequential')
+        except:
+            pass
+    else:
+        current_file = None
+
     return jsonify({'ok': True, 'status': task.status, 'uptime': uptime, 'pid': task.ffmpeg_pid,
+                    'current_file': current_file, 'play_mode': play_mode,
                     'input_bitrate': fmt(read_bps), 'output_bitrate': fmt(write_bps)})
 
 

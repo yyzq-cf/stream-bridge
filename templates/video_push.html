@@ -127,7 +127,7 @@ function closeEditVP() {
                 <label>视频目录路径</label>
                 <div style="display:flex;gap:8px;">
                     <input type="text" name="directory" id="dir-input" class="form-control"
-                        placeholder="/app/data/videos 或 /path/to/dir" style="font-family:monospace;font-size:13px;flex:1;">
+                        value="/app/data/videos" placeholder="/app/data/videos 或 /path/to/dir" style="font-family:monospace;font-size:13px;flex:1;">
                     <button type="button" class="btn btn-sm" onclick="scanDir()">扫描</button>
                 </div>
                 <div id="dir-result" style="margin-top:8px;font-size:13px;"></div>
@@ -165,7 +165,7 @@ function closeEditVP() {
             <thead>
                 <tr>
                     <th>ID</th><th>名称</th><th>来源</th><th>类型</th><th>推流目标</th><th>输入码率</th><th>输出码率</th>
-                    <th>循环</th><th>状态</th><th>输入</th><th>输出</th><th>时长</th><th>操作</th>
+                    <th>循环</th><th>状态</th><th>输入</th><th>输出</th><th>时长</th><th>当前文件</th><th>播放控制</th><th>操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -193,6 +193,16 @@ function closeEditVP() {
                     <td id="vp-in-{{ t.id }}">-</td>
                     <td id="vp-out-{{ t.id }}">-</td>
                     <td id="vp-uptime-{{ t.id }}">-</td>
+                    <td id="vp-file-{{ t.id }}" style="font-size:12px;color:var(--text-dim);">-</td>
+                    <td id="vp-ctrl-{{ t.id }}" style="white-space:nowrap;">
+                        {% if t.source_type == 'directory' and t.status == 'running' %}
+                        <button class="btn btn-sm" onclick="ctrlVP({{ t.id }},'prev')" title="上一个">⏮</button>
+                        <button class="btn btn-sm" onclick="ctrlVP({{ t.id }},'next')" title="下一个">⏭</button>
+                        <button class="btn btn-sm" id="vp-mode-{{ t.id }}" onclick="toggleMode({{ t.id }})" title="切换顺序/随机">📋</button>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                     <td class="action-buttons">
                         {% if t.status == 'running' %}
                         <button class="btn btn-sm btn-warning" onclick="stopVP({{ t.id }})">停止</button>
@@ -382,6 +392,29 @@ async function deleteVP(id, name) {
     }
 }
 
+// 目录推流控制
+async function ctrlVP(id, action) {
+    const r = await api(`/video-push/${id}/control`, 'POST', { action: action });
+    if (r.ok) {
+        showToast('✅ ' + r.message, 'success');
+    } else {
+        showToast('❌ ' + (r.message || '操作失败'), 'error');
+    }
+}
+
+async function toggleMode(id) {
+    const btn = document.getElementById(`vp-mode-${id}`);
+    const currentMode = btn.dataset.mode || 'sequential';
+    const newMode = currentMode === 'sequential' ? 'random' : 'sequential';
+    const r = await api(`/video-push/${id}/control`, 'POST', { mode: newMode });
+    if (r.ok) {
+        btn.dataset.mode = r.mode;
+        btn.textContent = r.mode === 'random' ? '🎲' : '📋';
+        btn.title = r.mode === 'random' ? '当前:随机播放' : '当前:顺序播放';
+        showToast('✅ ' + (r.mode === 'random' ? '已切换为随机播放' : '已切换为顺序播放'), 'success');
+    }
+}
+
 // 刷新运行中的任务状态
 async function refreshVP() {
     const rows = document.querySelectorAll('[id^="vp-"][data-id]');
@@ -397,6 +430,14 @@ async function refreshVP() {
                 if (inEl) inEl.textContent = data.input_bitrate || '-';
                 const outEl = document.getElementById(`vp-out-${id}`);
                 if (outEl) outEl.textContent = data.output_bitrate || '-';
+                const fileEl = document.getElementById(`vp-file-${id}`);
+                if (fileEl) fileEl.textContent = data.current_file || '-';
+                const modeBtn = document.getElementById(`vp-mode-${id}`);
+                if (modeBtn && data.play_mode) {
+                    modeBtn.dataset.mode = data.play_mode;
+                    modeBtn.textContent = data.play_mode === 'random' ? '🎲' : '📋';
+                    modeBtn.title = data.play_mode === 'random' ? '当前:随机播放' : '当前:顺序播放';
+                }
             }
         } catch(e) {}
     }
