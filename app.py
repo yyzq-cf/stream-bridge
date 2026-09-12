@@ -85,7 +85,8 @@ def get_client_ip():
 # ─── 版本号(按日期+当日修改次数) ───
 import os as _os
 _VERSION_FILE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'data', '.version')
-_VERSION_DATE = datetime.now().strftime('%Y%m%d')
+from datetime import timedelta as _timedelta
+_VERSION_DATE = (datetime.utcnow() + _timedelta(hours=8)).strftime('%Y%m%d')
 
 def _get_version():
     """获取版本号: vYYYYMMDD-N, 每次重启自动递增当日次数"""
