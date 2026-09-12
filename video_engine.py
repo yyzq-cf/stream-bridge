@@ -41,7 +41,12 @@ def _build_ffmpeg_cmd(source, target, loop=False, is_url=False):
         Config.FFMPEG_PATH,
         '-hide_banner',
         '-loglevel', 'warning',
-    ] + headers + [
+    ] + headers
+
+    if loop:
+        cmd += ['-stream_loop', '-1']
+
+    cmd += [
         '-re',
         '-i', source,
         '-c:v', Config.DEFAULT_VIDEO_CODEC,
@@ -112,8 +117,8 @@ def start_video_push(task_id):
         try:
             proc = subprocess.Popen(
                 cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
             )
             task.ffmpeg_pid = proc.pid
