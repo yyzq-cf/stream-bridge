@@ -14,7 +14,10 @@
             <span class="nav-logo">🎥</span>
             <a href="{{ url_for('dashboard') }}">StreamBridge</a>
         </div>
-        <div class="nav-links">
+        <button class="nav-hamburger" onclick="toggleNavMenu()" aria-label="菜单">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="nav-links" id="nav-links">
             <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">📊 仪表盘</a>
             <a href="{{ url_for('streamers') }}" class="{% if request.endpoint == 'streamers' %}active{% endif %}">🎥 博主管理</a>
             {% if current_user.is_admin %}
@@ -58,5 +61,19 @@
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block scripts %}{% endblock %}
+<script>
+function toggleNavMenu() {
+    var links = document.getElementById('nav-links');
+    links.classList.toggle('nav-open');
+}
+document.addEventListener('DOMContentLoaded', function() {
+    var links = document.querySelectorAll('#nav-links a');
+    links.forEach(function(link) {
+        link.addEventListener('click', function() {
+            document.getElementById('nav-links').classList.remove('nav-open');
+        });
+    });
+});
+</script>
 </body>
 </html>

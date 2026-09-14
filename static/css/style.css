@@ -273,13 +273,203 @@ input:checked + .slider:before { transform: translateX(18px); }
 .auth-link { display: inline-block; padding: 10px 16px; background: var(--info); border-radius: 6px; color: white; text-decoration: none; }
 .config-form { background: var(--bg); padding: 16px; border-radius: 8px; margin-bottom: 16px; }
 
-/* Responsive */
+/* ─── 汉堡菜单按钮（仅移动端显示） ─── */
+.nav-hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 36px;
+    height: 36px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 6px;
+    margin-left: auto;
+}
+.nav-hamburger span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--text);
+    border-radius: 2px;
+    transition: 0.3s;
+}
+
+/* ─── 监控间隔栏 ─── */
+.monitor-interval-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* ─── Responsive ─── */
+
+/* 平板及以下 */
+@media (max-width: 1024px) {
+    .nav-links { gap: 2px; margin-left: 16px; }
+    .nav-links a { padding: 6px 10px; font-size: 13px; }
+    .container { padding: 16px; }
+}
+
+/* 手机端 */
 @media (max-width: 768px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .dashboard-grid { grid-template-columns: 1fr; }
-    .nav-links { flex-wrap: wrap; }
-    .form-inline { flex-direction: column; align-items: stretch; }
-    .form-inline .form-control { flex: none; }
+    /* ── 导航栏：汉堡菜单 ── */
+    .navbar {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 0 12px;
+        gap: 8px;
+    }
+    .nav-brand {
+        font-size: 16px;
+        padding: 10px 0;
+    }
+    .nav-hamburger {
+        display: flex;
+        margin-left: auto;
+    }
+    .nav-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        order: 3;
+        margin-left: 0;
+        padding-bottom: 8px;
+        gap: 2px;
+    }
+    .nav-links.nav-open {
+        display: flex;
+    }
+    .nav-links a {
+        padding: 12px 14px;
+        font-size: 14px;
+        border-radius: 8px;
+        width: 100%;
+    }
+    .nav-user {
+        order: 2;
+        gap: 6px;
+    }
+    .nav-user span:not(.nav-version) {
+        display: none;
+    }
+    .nav-version { font-size: 10px; padding: 2px 6px; }
+    .theme-toggle { padding: 4px 8px; font-size: 14px; }
+
+    /* ── 容器/面板内边距缩小 ── */
+    .container { padding: 10px; }
+    .page-title { font-size: 20px; margin-bottom: 14px; }
+    .panel { margin-bottom: 14px; }
+    .panel-header { padding: 10px 14px; }
+    .panel-header h2 { font-size: 15px; }
+    .panel-body { padding: 12px; }
+
+    /* ── 统计卡片 ── */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    .stat-card { padding: 14px 10px; }
+    .stat-icon { font-size: 22px; margin-bottom: 4px; }
+    .stat-value { font-size: 22px; }
+    .stat-label { font-size: 12px; }
+
+    /* ── Dashboard 布局 ── */
+    .dashboard-grid { grid-template-columns: 1fr; gap: 14px; }
+
+    /* ── 仪表盘圆环：2列网格 ── */
+    .panel-body > div[style*="display:flex"] {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px !important;
+    }
+    .gauge-wrap { width: 110px; height: 110px; }
+    .gauge-value { font-size: 18px; }
+
+    /* ── 表格：横向滚动 ── */
+    .table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+    }
+    .table th, .table td {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    .table thead { font-size: 11px; }
+
+    /* ── 表单 ── */
+    .form-inline {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .form-inline .form-control { flex: none; width: 100%; }
+    .form-inline .form-group { margin-bottom: 0; width: 100%; }
+    .form-inline button { width: 100%; }
+    .form-control { font-size: 15px; padding: 10px 12px; }
+
+    /* ── 按钮 ── */
+    .btn { padding: 10px 14px; font-size: 13px; }
+    .btn-sm { padding: 8px 10px; font-size: 12px; }
+    .action-buttons { gap: 4px; }
+
+    /* ── Modal：接近全屏 ── */
+    .modal { padding: 12px; }
+    .modal-content {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 18px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    /* ── 日志 ── */
+    .log-item { font-size: 12px; gap: 6px; }
+    .log-level { min-width: 40px; font-size: 11px; }
+    .log-time { font-size: 11px; }
+
+    /* ── Flash 消息 ── */
+    .flash { padding: 8px 12px; font-size: 13px; }
+
+    /* ── 分页 ── */
+    .pagination { gap: 8px; flex-wrap: wrap; }
+
+    /* ── 源类型单选按钮 ── */
+    .panel-body label.checkbox-label { font-size: 13px; }
+
+    /* ── 悬浮提示在触摸设备禁用 ── */
+    .streamer-link::after { display: none; }
+
+    /* ── 监控间隔栏：手机端换行 ── */
+    .monitor-interval-bar { flex-direction: column; align-items: stretch; }
+    .monitor-interval-bar input[type="number"] { width: 100% !important; }
+
+    /* ── 视频推流来源选择：换行 ── */
+    .panel-body div[style*="display:flex;gap:16px"] {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    /* ── 视频推流目录路径行 ── */
+    .panel-body div[style*="display:flex;gap:8px"] {
+        flex-wrap: wrap !important;
+    }
+}
+
+/* 超小屏 (≤400px) */
+@media (max-width: 400px) {
+    .stats-grid { grid-template-columns: 1fr; gap: 8px; }
+    .panel-body > div[style*="display:flex"] {
+        grid-template-columns: 1fr !important;
+    }
+    .container { padding: 8px; }
+    .page-title { font-size: 18px; }
 }
 
 /* Action buttons */
