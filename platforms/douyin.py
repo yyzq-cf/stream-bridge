@@ -260,8 +260,16 @@ def _fallback_page_extract(web_rid, proxy=None):
 
 def _extract_web_rid(url):
     """从URL中提取抖音房间号(web_rid)"""
+    # 从查询参数提取 live_web_rid=123456
+    match = re.search(r'live_web_rid=(\d+)', url)
+    if match:
+        return match.group(1)
     # 从完整URL提取: https://live.douyin.com/163823390463?...
     match = re.search(r'live\.douyin\.com/(\d+)', url)
+    if match:
+        return match.group(1)
+    # 从 douyin.com 路径提取
+    match = re.search(r'douyin\.com/(\d{5,})', url)
     if match:
         return match.group(1)
     # 纯数字
