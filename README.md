@@ -220,6 +220,12 @@ Docker Hub：https://hub.docker.com/r/ywsj/stream-bridge
 - **YouTube限制**：免费频道同时推流数量有限(1-3路)
 - **版权**：转推他人直播内容需注意版权问题
 
+## ☕ 请作者喝杯咖啡
+
+如果这个项目对你有帮助，欢迎请作者喝杯咖啡 ☕️
+
+![打赏码](assets/donation.jpg)
+
 ## 🙏 致谢
 
 本项目的平台直播流检测方案参考了以下开源项目：
