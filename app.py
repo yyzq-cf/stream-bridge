@@ -82,30 +82,30 @@ def get_client_ip():
     """获取客户端IP"""
     return request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr or '').split(',')[0].strip()
 
-# ─── 版本号(按日期+当日修改次数) ───
+# ─── 版本号(构建时注入,不再动态递增) ───
 import os as _os
-_VERSION_FILE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'data', '.version')
-from datetime import timedelta as _timedelta
-_VERSION_DATE = (datetime.utcnow() + _timedelta(hours=8)).strftime('%Y%m%d')
 
 def _get_version():
-    """获取版本号: vYYYYMMDD-N, 每次重启自动递增当日次数"""
-    try:
-        with open(_VERSION_FILE, 'r') as f:
-            v = f.read().strip()
-        if v.startswith(f'v{_VERSION_DATE}-'):
-            n = int(v.split('-')[1]) + 1
-        else:
-            n = 1
-    except:
-        n = 1
-    version = f'v{_VERSION_DATE}-{n}'
-    try:
-        with open(_VERSION_FILE, 'w') as f:
-            f.write(version)
-    except:
-        pass
-    return version
+    """读取构建时写入的 VERSION 文件, fallback 到环境变量或 dev"""
+    # 优先读取构建时写入的 VERSION 文件
+    version_file = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'VERSION')
+    files_to_try = [
+        version_file,
+        '/app/VERSION',  # Docker 容器内绝对路径
+    ]
+    for path in files_to_try:
+        try:
+            with open(path, 'r') as f:
+                v = f.read().strip()
+            if v:
+                return v
+        except:
+            continue
+    # fallback: 环境变量
+    env_ver = _os.environ.get('APP_VERSION')
+    if env_ver:
+        return env_ver
+    return 'dev'
 
 VERSION = _get_version()
 
